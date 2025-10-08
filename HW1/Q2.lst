@@ -1,0 +1,371 @@
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 1
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+C o m p i l a t i o n
+
+
+   2   
+   5   
+   6  set m / X1, X2 /;
+   7  set b / yellow, blue, green, orange, purple /;
+   8  alias (b,bb);
+   9   
+  10  parameter nr(b) 'net revenue [$ per bean]';
+  11  nr('yellow') = 1.10;
+  12  nr('blue')   = 1.05;
+  13  nr('green')  = 1.07;
+  14  nr('orange') = 0.95;
+  15  nr('purple') = 0.99;
+  16   
+  17  scalars
+  18      rate 'beans per hour' /100/
+  19      H    'hours per week' /40/
+  20      cap  'machine weekly capacity [beans]';
+  21  cap = rate*H;
+  22  * = 4000
+  23   
+  24  * Part d mapping: valid (m,b) pairs
+  25  set m_b(m,b) 'allowed combos when DO_SPLIT=1';
+  26  m_b('X1','yellow') = yes; m_b('X1','blue') = yes;  m_b('X1','green') = yes;
+  27  m_b('X2','yellow') = yes; m_b('X2','orange') = yes; m_b('X2','purple') = yes;
+  28   
+  29  variables
+  30      Q(m,b)  'production [beans]'
+  31      profit  'total profit [$]';
+  32  positive variable Q;
+  33   
+  34  equations
+  35      eq_obj    'objective'
+  36      eq_cap(m) 'capacity per machine';
+  37   
+  39    eq_obj.. profit =e= sum((m,b)$m_b(m,b), nr(b)*Q(m,b));
+  40    eq_cap(m)..     sum(b$m_b(m,b), Q(m,b)) =l= cap;
+  41    Q.fx(m,b)$(not m_b(m,b)) = 0;
+  43   
+  44  * Part c: ±6% nearly-equal totals across colors
+  46    equations eq_up(b,bb) 'upper 6% bound', eq_lo(b,bb) 'lower 6% bound';
+  47    eq_up(b,bb)$(not sameas(b,bb)).. sum(m, Q(m,b)) =l= 1.06*sum(m, Q(m,bb));
+  48    eq_lo(b,bb)$(not sameas(b,bb)).. sum(m, Q(m,b)) =g= 0.94*sum(m, Q(m,bb));
+  49    model jelly / eq_obj, eq_cap, eq_up, eq_lo /;
+  51   
+  52  solve jelly using lp maximizing profit;
+  53   
+  54  * === Report ===
+  55  parameter byMachine(m,*), byColor(b,*), summary(*);
+  56   
+  57  byMachine(m,'qty [beans]') = sum(b, Q.l(m,b));
+  58  byMachine(m,'util [%]')    = 100*byMachine(m,'qty [beans]')/cap;
+  59   
+  60  byColor(b,'qty [beans]')   = sum(m, Q.l(m,b));
+  61  byColor(b,'share [%]')     = 100*byColor(b,'qty [beans]') / sum((m,bb), Q.l(m,bb));
+  62   
+  63  summary('profit [$]')      = profit.l;
+  64  summary('total beans')     = sum((m,b), Q.l(m,b));
+  65   
+  66  display byMachine, byColor, summary;
+  67   
+
+
+COMPILATION TIME     =        0.032 SECONDS      3 MB  47.6.0 c2de9d6d WEX-WEI
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 2
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+Equation Listing    SOLVE jelly Using LP From line 52
+
+
+---- eq_obj  =E=  objective
+
+eq_obj..  - 1.1*Q(X1,yellow) - 1.05*Q(X1,blue) - 1.07*Q(X1,green) - 1.1*Q(X2,yellow) - 0.95*Q(X2,orange) - 0.99*Q(X2,purple) + profit =E= 0 ; (LHS = 0)
+     
+
+---- eq_cap  =L=  capacity per machine
+
+eq_cap(X1)..  Q(X1,yellow) + Q(X1,blue) + Q(X1,green) =L= 4000 ; (LHS = 0)
+     
+eq_cap(X2)..  Q(X2,yellow) + Q(X2,orange) + Q(X2,purple) =L= 4000 ; (LHS = 0)
+     
+
+---- eq_up  =L=  upper 6% bound
+
+eq_up(yellow,blue)..  Q(X1,yellow) - 1.06*Q(X1,blue) + Q(X2,yellow) - 1.06*Q(X2,blue) =L= 0 ; (LHS = 0)
+     
+eq_up(yellow,green)..  Q(X1,yellow) - 1.06*Q(X1,green) + Q(X2,yellow) - 1.06*Q(X2,green) =L= 0 ; (LHS = 0)
+     
+eq_up(yellow,orange)..  Q(X1,yellow) - 1.06*Q(X1,orange) + Q(X2,yellow) - 1.06*Q(X2,orange) =L= 0 ; (LHS = 0)
+     
+REMAINING 17 ENTRIES SKIPPED
+
+
+---- eq_lo  =G=  lower 6% bound
+
+eq_lo(yellow,blue)..  Q(X1,yellow) - 0.94*Q(X1,blue) + Q(X2,yellow) - 0.94*Q(X2,blue) =G= 0 ; (LHS = 0)
+     
+eq_lo(yellow,green)..  Q(X1,yellow) - 0.94*Q(X1,green) + Q(X2,yellow) - 0.94*Q(X2,green) =G= 0 ; (LHS = 0)
+     
+eq_lo(yellow,orange)..  Q(X1,yellow) - 0.94*Q(X1,orange) + Q(X2,yellow) - 0.94*Q(X2,orange) =G= 0 ; (LHS = 0)
+     
+REMAINING 17 ENTRIES SKIPPED
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 3
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+Column Listing      SOLVE jelly Using LP From line 52
+
+
+---- Q  production [beans]
+
+Q(X1,yellow)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1.1     eq_obj
+        1       eq_cap(X1)
+        1       eq_up(yellow,blue)
+        1       eq_up(yellow,green)
+        1       eq_up(yellow,orange)
+        1       eq_up(yellow,purple)
+       -1.06    eq_up(blue,yellow)
+       -1.06    eq_up(green,yellow)
+       -1.06    eq_up(orange,yellow)
+       -1.06    eq_up(purple,yellow)
+        1       eq_lo(yellow,blue)
+        1       eq_lo(yellow,green)
+        1       eq_lo(yellow,orange)
+        1       eq_lo(yellow,purple)
+       -0.94    eq_lo(blue,yellow)
+       -0.94    eq_lo(green,yellow)
+       -0.94    eq_lo(orange,yellow)
+       -0.94    eq_lo(purple,yellow)
+
+Q(X1,blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1.05    eq_obj
+        1       eq_cap(X1)
+       -1.06    eq_up(yellow,blue)
+        1       eq_up(blue,yellow)
+        1       eq_up(blue,green)
+        1       eq_up(blue,orange)
+        1       eq_up(blue,purple)
+       -1.06    eq_up(green,blue)
+       -1.06    eq_up(orange,blue)
+       -1.06    eq_up(purple,blue)
+       -0.94    eq_lo(yellow,blue)
+        1       eq_lo(blue,yellow)
+        1       eq_lo(blue,green)
+        1       eq_lo(blue,orange)
+        1       eq_lo(blue,purple)
+       -0.94    eq_lo(green,blue)
+       -0.94    eq_lo(orange,blue)
+       -0.94    eq_lo(purple,blue)
+
+Q(X1,green)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1.07    eq_obj
+        1       eq_cap(X1)
+       -1.06    eq_up(yellow,green)
+       -1.06    eq_up(blue,green)
+        1       eq_up(green,yellow)
+        1       eq_up(green,blue)
+        1       eq_up(green,orange)
+        1       eq_up(green,purple)
+       -1.06    eq_up(orange,green)
+       -1.06    eq_up(purple,green)
+       -0.94    eq_lo(yellow,green)
+       -0.94    eq_lo(blue,green)
+        1       eq_lo(green,yellow)
+        1       eq_lo(green,blue)
+        1       eq_lo(green,orange)
+        1       eq_lo(green,purple)
+       -0.94    eq_lo(orange,green)
+       -0.94    eq_lo(purple,green)
+
+REMAINING 7 ENTRIES SKIPPED
+
+---- profit  total profit [$]
+
+profit
+                (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
+        1       eq_obj
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 4
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+Range Statistics    SOLVE jelly Using LP From line 52
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 4.000E+03, 4.000E+03] - Zero values observed as well
+Bound     [min, max] : [        NA,        NA] - Zero values observed as well
+Matrix    [min, max] : [ 9.400E-01, 1.100E+00]
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 5
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+Model Statistics    SOLVE jelly Using LP From line 52
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           4     SINGLE EQUATIONS           43
+BLOCKS OF VARIABLES           2     SINGLE VARIABLES           11
+NON ZERO ELEMENTS           173
+
+
+GENERATION TIME      =        0.312 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 6
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+Solution Report     SOLVE jelly Using LP From line 52
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   jelly               OBJECTIVE  profit
+     TYPE    LP                  DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  52
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE             8267.4903
+
+ RESOURCE USAGE, LIMIT          0.750 10000000000.000
+ ITERATION COUNT, LIMIT        10    2147483647
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO setup time: 0.00s
+--- GMO memory 0.50 Mb (peak 0.50 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.00 Mb (peak 0.00 Mb)
+--- Starting Cplex
+
+
+--- LP status (1): optimal.
+--- Cplex Time: 0.48sec (det. 0.10 ticks)
+
+
+Optimal solution found
+Objective:         8267.490347
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU eq_obj              .              .              .             1.0000      
+
+  eq_obj  objective
+
+---- EQU eq_cap  capacity per machine
+
+          LOWER          LEVEL          UPPER         MARGINAL
+
+X1        -INF         4000.0000      4000.0000         1.0334      
+X2        -INF         4000.0000      4000.0000         1.0334      
+
+---- EQU eq_up  upper 6% bound
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.blue          -INF          -98.2239          .              .          
+yellow.green         -INF          -98.2239          .              .          
+yellow.orange        -INF             .              .             0.0666      
+yellow.purple        -INF      -9.09495E-13          .              .          
+blue  .yellow        -INF          -98.2239          .              .          
+blue  .green         -INF          -98.2239          .              .          
+blue  .orange        -INF             .              .             0.0121      
+blue  .purple        -INF             .              .             0.0044      
+green .yellow        -INF          -98.2239          .              .          
+green .blue          -INF          -98.2239          .              .          
+green .orange        -INF      9.094947E-13          .              .          
+green .purple        -INF             .              .             0.0366      
+orange.yellow        -INF         -190.8880          .              .          
+orange.blue          -INF         -190.8880          .              .          
+orange.green         -INF         -190.8880          .              .          
+orange.purple        -INF          -92.6641          .              .          
+purple.yellow        -INF         -190.8880          .              .          
+purple.blue          -INF         -190.8880          .              .          
+purple.green         -INF         -190.8880          .              .          
+purple.orange        -INF          -92.6641          .              .          
+
+---- EQU eq_lo  lower 6% bound
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.blue            .            98.2239        +INF             .          
+yellow.green           .            98.2239        +INF             .          
+yellow.orange          .           185.3282        +INF             .          
+yellow.purple          .           185.3282        +INF             .          
+blue  .yellow          .            98.2239        +INF             .          
+blue  .green           .            98.2239        +INF             .          
+blue  .orange          .           185.3282        +INF             .          
+blue  .purple          .           185.3282        +INF             .          
+green .yellow          .            98.2239        +INF             .          
+green .blue            .            98.2239        +INF             .          
+green .orange          .           185.3282        +INF             .          
+green .purple          .           185.3282        +INF             .          
+orange.yellow          .             5.5598        +INF             .          
+orange.blue            .             5.5598        +INF             .          
+orange.green           .             5.5598        +INF             .          
+orange.purple          .            92.6641        +INF             .          
+purple.yellow          .             5.5598        +INF             .          
+purple.blue            .             5.5598        +INF             .          
+purple.green           .             5.5598        +INF             .          
+purple.orange          .            92.6641        +INF             .          
+
+---- VAR Q  production [beans]
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow          .           725.8687        +INF             .          
+X1.blue            .          1637.0656        +INF             .          
+X1.green           .          1637.0656        +INF             .          
+X1.orange          .              .              .             0.0834      
+X1.purple          .              .              .             0.0434      
+X2.yellow          .           911.1969        +INF             .          
+X2.blue            .              .              .            -0.0166      
+X2.green           .              .              .            -0.0366      
+X2.orange          .          1544.4015        +INF             .          
+X2.purple          .          1544.4015        +INF             .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR profit            -INF         8267.4903        +INF             .          
+
+  profit  total profit [$]
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/06/25 15:10:17 Page 7
+Q2 - June's Jellybeans (one model; parts c and d via switches)
+E x e c u t i o n
+
+
+----     66 PARAMETER byMachine  
+
+    qty [bean~    util [%]
+
+X1    4000.000     100.000
+X2    4000.000     100.000
+
+
+----     66 PARAMETER byColor  
+
+        qty [bean~   share [%]
+
+yellow    1637.066      20.463
+blue      1637.066      20.463
+green     1637.066      20.463
+orange    1544.402      19.305
+purple    1544.402      19.305
+
+
+----     66 PARAMETER summary  
+
+profit [$]  8267.490,    total beans 8000.000
+
+
+
+EXECUTION TIME       =        2.922 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+
+
+USER: Computational Economics EBGN 645               G250827|0002AO-GEN
+      Colorado School of Mines, Operations Research Department  DCE4628
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+Output     C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.lst

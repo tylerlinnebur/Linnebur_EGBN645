@@ -1,4 +1,4 @@
-$title Q1 - Benny's Bakery (one model; counterfactual via switch)
+$title Q1 - Benny's Bakery (single model; counterfactual via --CF)
 
 $if not set CF $set CF 0   * 0=reference, 1=counterfactual (2 rolls per croissant)
 
@@ -23,26 +23,27 @@ positive variable x;
 equations
     eq_obj        'objective: maximize profit'
     eq_time       'weekly time budget'
-$ifi %CF%==1 eq_pairing
+    eq_pairing    'counterfactual: 2 rolls per croissant (enabled when CF=1)';
 
 eq_obj..  profit =e= sum(i, (r(i)-c(i)) * x(i));
 eq_time.. sum(i, t(i)*x(i)) =l= Hbar;
 
-$if %CF%==1 eq_pairing.. x('roll') =g= 2 * x('croissant');
-
-$ifthen %CF%==1
-model bakery /eq_obj, eq_time, eq_pairing/;
+$ifthen "%CF%"=="1"
+eq_pairing.. x('roll') =g= 2 * x('croissant');
 $else
-model bakery /eq_obj, eq_time/;
+* harmless dummy so the model compiles when CF=0
+eq_pairing.. 0 =e= 0;
 $endif
+
+model bakery / eq_obj, eq_time, eq_pairing /;
 
 solve bakery using lp maximizing profit;
 
 * === Report ===
 parameter report(*,i) 'production and margins', summary(*);
-report('qty [items]',i) = x.l(i);
+report('qty [items]',i)     = x.l(i);
 report('unit margin [$]',i) = r(i)-c(i);
-report('hours/item',i) = t(i);
+report('hours/item',i)      = t(i);
 summary('total profit [$]') = profit.l;
-summary('hours used [h]')  = sum(i, t(i)*x.l(i));
+summary('hours used [h]')   = sum(i, t(i)*x.l(i));
 display report, summary;
