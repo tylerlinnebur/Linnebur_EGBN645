@@ -1,49 +1,88 @@
-$title Q1 - Benny's Bakery (single model; counterfactual via --CF)
+$TITLE Benny's Bakery (reference + counterfactual switch)
 
-$if not set CF $set CF 0   * 0=reference, 1=counterfactual (2 rolls per croissant)
+* =========================
+* (a) Sets, params, vars
+* =========================
+set i "products" /roll, croissant, bread/ ;
 
-set i / roll, croissant, bread /;
+* =========================
+parameter rev(i)  "--$/item-- selling price"
+/ roll 2.25, croissant 5.50, bread 10.00 /;
 
-parameters
-    r(i)  'revenue [$ per item]'
-    c(i)  'cost    [$ per item]'
-    t(i)  'time    [hours per item]';
+parameter cost(i) "--$/item-- variable cost"
+/ roll 1.50, croissant 2.00, bread 5.00 /;
 
-r('roll')       = 2.25;   c('roll')       = 1.50;   t('roll')       = 1.50;
-r('croissant')  = 5.50;   c('croissant')  = 2.00;   t('croissant')  = 2.25;
-r('bread')      = 10.50;  c('bread')      = 5.00;   t('bread')      = 5.00;
+parameter time(i) "--hours/item-- hours of labor per item"
+/ roll 1.50, croissant 2.25, bread 5.00 /;
 
-scalar Hbar 'total available hours [hours]' /40/;
+scalar Hbar "--hours/week-- total available labor" /40/ ;
 
-variables
-    x(i)    'production [items]'
-    profit  'total profit [$]';
-positive variable x;
+* =========================
 
+* Decision variables
+positive variable X(i) "--items-- production (units/week)" ;
+variable profit "--$/week-- total profit" ;
+
+* Objective: maximize profit = sum_i (rev(i)-cost(i)) * X(i)
 equations
-    eq_obj        'objective: maximize profit'
-    eq_time       'weekly time budget'
-    eq_pairing    'counterfactual: 2 rolls per croissant (enabled when CF=1)';
+    eq_obj     "target: profit calculation"
+    eq_hours   "time limit: cannot exceed weekly hours"
+    eq_roll_cf "counterfactual: require a roll with every croissant (enabled by switch)"
+;
 
-eq_obj..  profit =e= sum(i, (r(i)-c(i)) * x(i));
-eq_time.. sum(i, t(i)*x(i)) =l= Hbar;
+eq_obj..
+    profit =e= sum(i, (rev(i) - cost(i)) * X(i)) ;
 
-$ifthen "%CF%"=="1"
-eq_pairing.. x('roll') =g= 2 * x('croissant');
-$else
-* harmless dummy so the model compiles when CF=0
-eq_pairing.. 0 =e= 0;
-$endif
+eq_hours..
+    Hbar =g= sum(i, time(i) * X(i)) ;
 
-model bakery / eq_obj, eq_time, eq_pairing /;
+* =========================
+* (b) Counterfactual constraint (math)
+*     X(roll) >= X(croissant)
+*     (rolls may also be sold individually)
+* =========================
 
-solve bakery using lp maximizing profit;
+$if not set cf $setglobal cf 0
+scalar sw_cf /%cf%/ ;
+eq_roll_cf$sw_cf..
+    X("roll") =g= X("croissant") ;
 
-* === Report ===
-parameter report(*,i) 'production and margins', summary(*);
-report('qty [items]',i)     = x.l(i);
-report('unit margin [$]',i) = r(i)-c(i);
-report('hours/item',i)      = t(i);
-summary('total profit [$]') = profit.l;
-summary('hours used [h]')   = sum(i, t(i)*x.l(i));
-display report, summary;
+* =========================
+* Model & solve
+* =========================
+model bakery /all/ ;
+solve bakery using lp maximizing profit ;
+
+* =========================
+* Reporting
+* =========================
+parameter rep_x(i) "--items-- optimal production" ;
+parameter rep_profit "--$/week-- optimal profit" ;
+
+rep_x(i)     = X.l(i) ;
+rep_profit   = profit.l ;
+
+* Save a scenario-tagged GDX (0=reference, 1=counterfactual)
+execute_unload 'bakery_%cf%.gdx', rep_x, rep_profit ;
+
+* (Optional quick console echo)
+display rep_x, rep_profit ;
+
+* -----------------------------
+set k "report fields" / qty, profit /;
+set j "products plus total" / roll, croissant, bread, TOTAL /;
+
+parameter rep(j,k) "solution report for export" ;
+
+* quantities
+rep(j,'qty') = 0 ;
+rep('roll','qty')       = X.l('roll') ;
+rep('croissant','qty')  = X.l('croissant') ;
+rep('bread','qty')      = X.l('bread') ;
+
+* profit (park on TOTAL row)
+rep(j,'profit') = 0 ;
+rep('TOTAL','profit') = profit.l ;
+
+* write scenario-tagged GDX (0 = reference, 1 = counterfactual)
+execute_unload 'bakery_%cf%.gdx', rep ;

@@ -1,0 +1,124 @@
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/09/25 16:34:48 Page 1
+Benny's Bakery (reference + counterfactual switch)
+C o m p i l a t i o n
+
+
+   2   
+   3  * =========================
+   4  * (a) Sets, params, vars
+   5  * =========================
+   6  set i "products" /roll, croissant, bread/ ;
+   7   
+   8  * =========================
+   9  parameter
+  10      rev(i)  "--$/item-- selling price"
+  11      cost(i) "--$/item-- variable cost"
+  12      time(i) "--hours/item-- hours of labor per item"
+  13  /
+  14  roll       2.25   1.50   1.50
+****                    $334
+**** 334  Illegal data following a data element - rest ignored
+  15  croissant  5.50   2.00   2.25
+  16  bread     10.00   5.00   5.00
+  17  / ;
+  18   
+  19  scalar Hbar "--hours/week-- total available labor" /40/ ;
+  20   
+  21  * Decision variables
+  22  positive variable X(i) "--items-- production (units/week)" ;
+  23  variable profit "--$/week-- total profit" ;
+  24   
+  25  * Objective: maximize profit = sum_i (rev(i)-cost(i)) * X(i)
+  26  equations
+  27      eq_obj     "target: profit calculation"
+  28      eq_hours   "time limit: cannot exceed weekly hours"
+  29      eq_roll_cf "counterfactual: require a roll with every croissant (enabled by switch)"
+  30  ;
+  31   
+  32  eq_obj..
+  33      profit =e= sum(i, (rev(i) - cost(i)) * X(i)) ;
+  34   
+  35  eq_hours..
+  36      Hbar =g= sum(i, time(i) * X(i)) ;
+  37   
+  38  * =========================
+  39  * (b) Counterfactual constraint (math)
+  40  *     X(roll) >= X(croissant)
+  41  *     (rolls may also be sold individually)
+  42  * =========================
+  43   
+  45  scalar sw_cf /0/ ;
+  46  eq_roll_cf$sw_cf..
+  47      X("roll") =g= X("croissant") ;
+  48   
+  49  * =========================
+  50  * Model & solve
+  51  * =========================
+  52  model bakery /all/ ;
+  53  solve bakery using lp maximizing profit ;
+****                                          $257
+**** 257  Solve statement not checked because of previous errors
+  54   
+  55  * =========================
+  56  * Reporting
+  57  * =========================
+  58  parameter rep_x(i) "--items-- optimal production" ;
+  59  parameter rep_profit "--$/week-- optimal profit" ;
+  60   
+  61  rep_x(i)     = X.l(i) ;
+****                   $141
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement. Suppress with $onImplicitAssign.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+  62  rep_profit   = profit.l ;
+****                        $141
+**** 141  Symbol declared but no values have been assigned. Check for missing
+****         data definition, assignment, data loading or implicit assignment
+****         via a solve statement. Suppress with $onImplicitAssign.
+****         A wild shot: You may have spurious commas in the explanatory
+****         text of a declaration. Check symbol reference list.
+  63   
+  64  * Save a scenario-tagged GDX (0=reference, 1=counterfactual)
+  65  execute_unload 'bakery_0.gdx', rep_x, rep_profit ;
+  66   
+  67  * (Optional quick console echo)
+  68  display rep_x, rep_profit ;
+  69   
+  70  * -----------------------------
+  71  set k "report fields" / qty, profit /;
+  72  set j "products plus total" / roll, croissant, bread, TOTAL /;
+  73   
+  74  parameter rep(j,k) "solution report for export" ;
+  75   
+  76  * quantities
+  77  rep(j,'qty') = 0 ;
+  78  rep('roll','qty')       = X.l('roll') ;
+  79  rep('croissant','qty')  = X.l('croissant') ;
+  80  rep('bread','qty')      = X.l('bread') ;
+  81   
+  82  * profit (park on TOTAL row)
+  83  rep(j,'profit') = 0 ;
+  84  rep('TOTAL','profit') = profit.l ;
+  85   
+  86  * write scenario-tagged GDX (0 = reference, 1 = counterfactual)
+  87  execute_unload 'bakery_0.gdx', rep ;
+
+**** 4 ERROR(S)   0 WARNING(S)
+
+
+COMPILATION TIME     =        0.047 SECONDS      3 MB  47.6.0 c2de9d6d WEX-WEI
+
+
+USER: Computational Economics EBGN 645               G250827|0002AO-GEN
+      Colorado School of Mines, Operations Research Department  DCE4628
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q1.gms
+Output     C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q1.lst
+
+**** USER ERROR(S) ENCOUNTERED

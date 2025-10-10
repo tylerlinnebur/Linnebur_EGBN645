@@ -1,0 +1,187 @@
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/09/25 16:12:08 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1  * ==== Part (b): Base ====
+   2  Set m  "machines" /X1, X2/
+   3      b  "beans"    /yellow, blue, green, orange, purple/;
+   4   
+   5  Scalar rate  "beans/hour" /100/
+   6         hours "hours/week" /40/;
+   7   
+   8  Parameter cap(m) "capacity (beans/week)";
+   9  cap(m) = rate*hours;
+  10  * = 4000 (style like hbar etc.)
+  11   
+  12  Parameter rev(b) "net revenue ($/bean)";
+  13  rev("yellow") = 1.00 ;
+  14  rev("blue")   = 1.05 ;
+  15  rev("green")  = 1.07 ;
+  16  rev("orange") = 0.95 ;
+  17  rev("purple") = 0.90 ;
+  18   
+  19  Positive Variable Q(m,b) "production (beans/week)";
+  20  Variable Z "profit ($/week)";
+  21   
+  22  Equation obj, capcon(m);
+  23   
+  24  obj..    Z =e= sum((m,b), rev(b)*Q(m,b));
+  25  capcon(m).. sum(b, Q(m,b)) =l= cap(m);
+  26   
+  27  Model base /all/;
+  28  Solve base using lp maximizing Z;
+  29   
+  30  * ------- Export Part (b) -------
+  31  Parameter Qb(m,b) "solution Q for part (b)";
+  32  Qb(m,b) = Q.l(m,b);
+  33   
+  34  Parameter Tb(b) "totals by color (b) for part (b)";
+  35  Tb(b) = sum(m, Qb(m,b));
+  36   
+  37  Scalar Zb "profit for part (b)";
+  38  Zb = Z.l;
+  39   
+  40  File fb /'part_b.csv'/; put fb;
+  41  put 'machine,bean,Q_b,Total_by_bean,Profit_b' /;
+  42   
+  43  * write rows per machine-color (Q) with blank total/profit columns
+  44  loop(m,
+  45    loop(b,
+  46      put m.tl ',' b.tl ',' Qb(m,b):0:4 ',' '' ',' '' /;
+  47    );
+  48  );
+  49   
+  50  * write totals by bean (aggregate across machines)
+  51  loop(b,
+  52    put 'ALL' ',' b.tl ',' '' ',' Tb(b):0:4 ',' '' /;
+  53  );
+  54   
+  55  * final line with profit
+  56  put 'ALL,ALL,,' ',' Zb:0:2 /;
+  57   
+  58  * ==== Part (c): add near-equal constraint (±5%) ====
+  59  Alias (b,bb);
+  60   
+  61  Positive Variable T(b) "total by color (beans/week)";
+  62  Equation defTot(b), nearUp(b,bb), nearLo(b,bb);
+  63   
+  64  defTot(b).. T(b) =e= sum(m, Q(m,b));
+  65   
+  66  * enforce for all pairs b != bb using ord() as in your notes
+  67  nearUp(b,bb)$[ord(b)<>ord(bb)].. T(b) =l= 1.05*T(bb);
+  68  nearLo(b,bb)$[ord(b)<>ord(bb)].. T(b) =g= 0.95*T(bb);
+  69   
+  70  Model equalMix /obj, capcon, defTot, nearUp, nearLo/;
+  71  Solve equalMix using lp maximizing Z;
+  72   
+  73  * ------- Export Part (c) -------
+  74  Parameter Qc(m,b) "solution Q for part (c)";
+  75  Qc(m,b) = Q.l(m,b);
+  76   
+  77  Parameter Tc(b) "totals by color (b) for part (c)";
+  78  Tc(b) = sum(m, Qc(m,b));  * equals T.l(b) if you prefer: Tc(b) = T.l(b);
+****                            $409                 $7,321,140,10,140,36,409
+****   7  '(' expected
+****  10  ',' expected
+****  36  '=' or '..' or ':=' or '$=' operator expected
+****      rest of statement ignored
+**** 140  Unknown symbol
+**** 321  A '(' following an 'IF' is missing. We assumed you wanted to write
+****      an if-statement. This statement has been introduced with GAMS 2.25
+****      and it is possible that 'if' was used as an identifier.
+****      The GAMS parameter G205=1 can be used to run with the old syntax.
+**** 409  Unrecognizable item - skip to find a new statement
+****        looking for a ';' or a key word to get started again
+  79   
+  80  Scalar Zc "profit for part (c)";
+  81  Zc = Z.l;
+  82   
+  83  File fc /'part_c.csv'/; put fc;
+  84  put 'machine,bean,Q_c,Total_by_bean,Profit_c' /;
+  85   
+  86  * per machine-color decisions
+  87  loop(m,
+  88    loop(b,
+  89      put m.tl ',' b.tl ',' Qc(m,b):0:4 ',' '' ',' '' /;
+  90    );
+  91  );
+  92   
+  93  * totals by bean (from Tc)
+  94  loop(b,
+  95    put 'ALL' ',' b.tl ',' '' ',' Tc(b):0:4 ',' '' /;
+  96  );
+  97   
+  98  * final profit line
+  99  put 'ALL,ALL,,' ',' Zc:0:2 /;
+ 100   
+ 101  * ==== Part (d): feasibility by machine-color ====
+ 102  Set m_b(m,b) "feasible (m,b) pairs";
+ 103  * X1 can: yellow, blue, green
+ 104  m_b("X1","yellow") = yes ;
+ 105  m_b("X1","blue")   = yes ;
+ 106  m_b("X1","green")  = yes ;
+ 107  * X2 can: yellow, orange, purple
+ 108  m_b("X2","yellow") = yes ;
+ 109  m_b("X2","orange") = yes ;
+ 110  m_b("X2","purple") = yes ;
+ 111   
+ 112  * Re-define obj and cap using only valid (m,b)
+ 113  Equation obj_d, capcon_d(m);
+ 114   
+ 115  obj_d..       Z =e= sum((m,b)$m_b(m,b), rev(b)*Q(m,b));
+ 116  capcon_d(m).. sum(b$ m_b(m,b), Q(m,b)) =l= cap(m);
+ 117   
+ 118  Model restricted /obj_d, capcon_d/;
+ 119  Solve restricted using lp maximizing Z;
+****                                        $257
+**** 257  Solve statement not checked because of previous errors
+ 120   
+ 121  * ------- Export Part (d) -------
+ 122  Parameter Qd(m,b) "solution Q for part (d)";
+ 123  Qd(m,b) = Q.l(m,b);
+ 124   
+ 125  Parameter Td(b) "totals by color (b) for part (d)";
+ 126  Td(b) = sum(m$ m_b(m,b), Qd(m,b));  * only count feasible pairs
+****                                      $409
+**** 409  Unrecognizable item - skip to find a new statement
+****        looking for a ';' or a key word to get started again
+ 127   
+ 128  Scalar Zd "profit for part (d)";
+ 129  Zd = Z.l;
+ 130   
+ 131  File fd /'part_d.csv'/; put fd;
+ 132  put 'machine,bean,Q_d,Total_by_bean,Profit_d' /;
+ 133   
+ 134  * only export feasible (m,b) rows so CSV reflects the restriction
+ 135  loop(m,
+ 136    loop(b$ m_b(m,b),
+ 137      put m.tl ',' b.tl ',' Qd(m,b):0:4 ',' '' ',' '' /;
+ 138    );
+ 139  );
+ 140   
+ 141  * totals by bean (again only over feasible pairs)
+ 142  loop(b,
+ 143    put 'ALL' ',' b.tl ',' '' ',' Td(b):0:4 ',' '' /;
+ 144  );
+ 145   
+ 146  * final profit line
+ 147  put 'ALL,ALL,,' ',' Zd:0:2 /;
+
+**** 10 ERROR(S)   0 WARNING(S)
+
+
+COMPILATION TIME     =        0.015 SECONDS      3 MB  47.6.0 c2de9d6d WEX-WEI
+
+
+USER: Computational Economics EBGN 645               G250827|0002AO-GEN
+      Colorado School of Mines, Operations Research Department  DCE4628
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+Output     C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.lst
+
+**** USER ERROR(S) ENCOUNTERED

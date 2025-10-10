@@ -1,0 +1,50 @@
+--- Job Q2.gms Start 10/09/25 16:12:08 47.6.0 c2de9d6d WEX-WEI x86 64bit/MS Windows
+--- Applying:
+    C:\GAMS\47\gmsprmNT.txt
+--- GAMS Parameters defined
+    Input "C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms"
+    ScrDir "C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\225a\"
+    SysDir C:\GAMS\47\
+    LogOption 2
+Licensee: Computational Economics EBGN 645               G250827|0002AO-GEN
+          Colorado School of Mines, Operations Research Department  DCE4628
+          C:\Users\tyler\OneDrive\Documents\GAMS\gamslice.txt
+          License Admin: Maxwell Brown, maxbrown@mines.edu                 
+          Other time limited license
+          The evaluation period of the license will expire on Dec 25, 2025
+Processor information: 1 socket(s), 10 core(s), and 12 thread(s) available
+GAMS 47.6.0   Copyright (C) 1987-2024 GAMS Development. All rights reserved
+--- Starting compilation
+--- Q2.gms(78) 3 Mb 8 Errors
+*** Error 409 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    Unrecognizable item - skip to find a new statement
+      looking for a ';' or a key word to get started again
+*** Error   7 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    '(' expected
+*** Error 321 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    A '(' following an 'IF' is missing. We assumed you wanted to write
+    an if-statement. This statement has been introduced with GAMS 2.25
+    and it is possible that 'if' was used as an identifier.
+    The GAMS parameter G205=1 can be used to run with the old syntax.
+*** Error 140 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    Unknown symbol
+*** Error  10 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    ',' expected
+*** Error 140 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    Unknown symbol
+*** Error  36 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    '=' or '..' or ':=' or '$=' operator expected
+    rest of statement ignored
+*** Error 409 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    Unrecognizable item - skip to find a new statement
+      looking for a ';' or a key word to get started again
+--- Q2.gms(119) 3 Mb 9 Errors
+*** Error 257 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    Solve statement not checked because of previous errors
+--- Q2.gms(126) 3 Mb 10 Errors
+*** Error 409 in C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
+    Unrecognizable item - skip to find a new statement
+      looking for a ';' or a key word to get started again
+--- Q2.gms(147) 3 Mb 10 Errors
+*** Status: Compilation error(s)
+--- Job Q2.gms Stop 10/09/25 16:12:08 elapsed 0:00:00.048

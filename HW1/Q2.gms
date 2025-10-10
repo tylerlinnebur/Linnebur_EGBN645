@@ -1,72 +1,62 @@
-$title Q2 - June's Jellybeans (one model; parts c and d via switches)
+* ==== Part (b): Base ====
+Set m  "machines" /X1, X2/
+    b  "beans"    /yellow, blue, green, orange, purple/;
 
-$if not set DO_EQ    $set DO_EQ 0
-$if not set DO_SPLIT $set DO_SPLIT 0
+Scalar rate  "beans/hour" /100/
+       hours "hours/week" /40/;
 
-set m / X1, X2 /;
-set b / yellow, blue, green, orange, purple /;
-alias (b,bb);
+Parameter cap(m) "capacity (beans/week)";
+cap(m) = rate*hours * = 4000 (style like hbar etc.)
 
-parameter nr(b) 'net revenue [$ per bean]';
-nr('yellow') = 1.10;
-nr('blue')   = 1.05;
-nr('green')  = 1.07;
-nr('orange') = 0.95;
-nr('purple') = 0.99;
+Parameter rev(b) "net revenue ($/bean)";
+rev("yellow") = 1.00 ;
+rev("blue")   = 1.05 ;
+rev("green")  = 1.07 ;
+rev("orange") = 0.95 ;
+rev("purple") = 0.90 ;
 
-scalars
-    rate 'beans per hour' /100/
-    H    'hours per week' /40/
-    cap  'machine weekly capacity [beans]';
-cap = rate*H;
-* = 4000
+Positive Variable Q(m,b) "production (beans/week)";
+Variable Z "profit ($/week)";
 
-* Part d mapping: valid (m,b) pairs
-set m_b(m,b) 'allowed combos when DO_SPLIT=1';
-m_b('X1','yellow') = yes; m_b('X1','blue') = yes;  m_b('X1','green') = yes;
-m_b('X2','yellow') = yes; m_b('X2','orange') = yes; m_b('X2','purple') = yes;
+Equation obj, capcon(m);
 
-variables
-    Q(m,b)  'production [beans]'
-    profit  'total profit [$]';
-positive variable Q;
+obj..    Z =e= sum((m,b), rev(b)*Q(m,b));
+capcon(m).. sum(b, Q(m,b)) =l= cap(m);
 
-equations
-    eq_obj    'objective'
-    eq_cap(m) 'capacity per machine';
+Model base /all/;
+Solve base using lp maximizing Z;
 
-$ifthen "%DO_SPLIT%"=="1"
-  eq_obj.. profit =e= sum((m,b)$m_b(m,b), nr(b)*Q(m,b));
-  eq_cap(m)..     sum(b$m_b(m,b), Q(m,b)) =l= cap;
-  Q.fx(m,b)$(not m_b(m,b)) = 0;
-$else
-  eq_obj.. profit =e= sum((m,b), nr(b)*Q(m,b));
-  eq_cap(m)..     sum(b, Q(m,b)) =l= cap;
-$endif
+* ==== Part (c): add near-equal constraint (±5%) ====
+Alias (b,bb);
 
-* Part c: ±6% nearly-equal totals across colors
-$ifthen "%DO_EQ%"=="1"
-  equations eq_up(b,bb) 'upper 6% bound', eq_lo(b,bb) 'lower 6% bound';
-  eq_up(b,bb)$(not sameas(b,bb)).. sum(m, Q(m,b)) =l= 1.06*sum(m, Q(m,bb));
-  eq_lo(b,bb)$(not sameas(b,bb)).. sum(m, Q(m,b)) =g= 0.94*sum(m, Q(m,bb));
-  model jelly / eq_obj, eq_cap, eq_up, eq_lo /;
-$else
-  model jelly / eq_obj, eq_cap /;
-$endif
+Positive Variable T(b) "total by color (beans/week)";
+Equation defTot(b), nearUp(b,bb), nearLo(b,bb);
 
-solve jelly using lp maximizing profit;
+defTot(b).. T(b) =e= sum(m, Q(m,b));
 
-* === Report ===
-parameter byMachine(m,*), byColor(b,*), summary(*);
+* enforce for all pairs b != bb using ord() as in your notes
+nearUp(b,bb)$[ord(b)<>ord(bb)].. T(b) =l= 1.05*T(bb);
+nearLo(b,bb)$[ord(b)<>ord(bb)].. T(b) =g= 0.95*T(bb);
 
-byMachine(m,'qty [beans]') = sum(b, Q.l(m,b));
-byMachine(m,'util [%]')    = 100*byMachine(m,'qty [beans]')/cap;
+Model equalMix /obj, capcon, defTot, nearUp, nearLo/;
+Solve equalMix using lp maximizing Z;
 
-byColor(b,'qty [beans]')   = sum(m, Q.l(m,b));
-byColor(b,'share [%]')     = 100*byColor(b,'qty [beans]') / sum((m,bb), Q.l(m,bb));
+* ==== Part (d): feasibility by machine-color ====
+Set m_b(m,b) "feasible (m,b) pairs";
+* X1 can: yellow, blue, green
+m_b("X1","yellow") = yes ;
+m_b("X1","blue")   = yes ;
+m_b("X1","green")  = yes ;
+* X2 can: yellow, orange, purple
+m_b("X2","yellow") = yes ;
+m_b("X2","orange") = yes ;
+m_b("X2","purple") = yes ;
 
-summary('profit [$]')      = profit.l;
-summary('total beans')     = sum((m,b), Q.l(m,b));
+* Re-define obj and cap using only valid (m,b)
+Equation obj_d, capcon_d(m);
 
-display byMachine, byColor, summary;
+obj_d..       Z =e= sum((m,b)$m_b(m,b), rev(b)*Q(m,b));
+capcon_d(m).. sum(b$ m_b(m,b), Q(m,b)) =l= cap(m);
 
+Model restricted /obj_d, capcon_d/;
+Solve restricted using lp maximizing Z;
