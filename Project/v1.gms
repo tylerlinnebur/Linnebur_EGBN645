@@ -1,4 +1,4 @@
-$TITLE Nuclear LCOE Model — Indices, Parameters, Variables, Objective, Constraints (draft/skeleton)
+$TITLE Nuclear LCOE Model — Indices, Parameters, Variables, Objective, Constraints (draft)
 
 *--------------------------------------------------
 * Indices / Sets
