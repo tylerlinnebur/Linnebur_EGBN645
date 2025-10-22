@@ -2,11 +2,12 @@
 Set m  "machines" /X1, X2/
     b  "beans"    /yellow, blue, green, orange, purple/;
 
-Scalar rate  "beans/hour" /100/
-       hours "hours/week" /40/;
+Scalar rate  "beans/hour"  /100/
+       hours "hours/week"  /40/;
 
 Parameter cap(m) "capacity (beans/week)";
-cap(m) = rate*hours * = 4000 (style like hbar etc.)
+cap(m) = rate * hours;
+* Each machine can produce 100*40 = 4,000 beans/week
 
 Parameter rev(b) "net revenue ($/bean)";
 rev("yellow") = 1.00 ;
@@ -20,7 +21,7 @@ Variable Z "profit ($/week)";
 
 Equation obj, capcon(m);
 
-obj..    Z =e= sum((m,b), rev(b)*Q(m,b));
+obj..       Z =e= sum((m,b), rev(b) * Q(m,b));
 capcon(m).. sum(b, Q(m,b)) =l= cap(m);
 
 Model base /all/;
@@ -35,8 +36,8 @@ Equation defTot(b), nearUp(b,bb), nearLo(b,bb);
 defTot(b).. T(b) =e= sum(m, Q(m,b));
 
 * enforce for all pairs b != bb using ord() as in your notes
-nearUp(b,bb)$[ord(b)<>ord(bb)].. T(b) =l= 1.05*T(bb);
-nearLo(b,bb)$[ord(b)<>ord(bb)].. T(b) =g= 0.95*T(bb);
+nearUp(b,bb)$[ord(b)<>ord(bb)].. T(b) =l= 1.05 * T(bb);
+nearLo(b,bb)$[ord(b)<>ord(bb)].. T(b) =g= 0.95 * T(bb);
 
 Model equalMix /obj, capcon, defTot, nearUp, nearLo/;
 Solve equalMix using lp maximizing Z;
@@ -55,7 +56,7 @@ m_b("X2","purple") = yes ;
 * Re-define obj and cap using only valid (m,b)
 Equation obj_d, capcon_d(m);
 
-obj_d..       Z =e= sum((m,b)$m_b(m,b), rev(b)*Q(m,b));
+obj_d..       Z =e= sum((m,b)$ m_b(m,b), rev(b) * Q(m,b));
 capcon_d(m).. sum(b$ m_b(m,b), Q(m,b)) =l= cap(m);
 
 Model restricted /obj_d, capcon_d/;
