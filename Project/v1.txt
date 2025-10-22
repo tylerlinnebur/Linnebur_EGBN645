@@ -1,4 +1,4 @@
-$TITLE Nuclear LCOE Model — Indices, Parameters, Variables, Objective, Constraints (skeleton)
+$TITLE Nuclear LCOE Model — Indices, Parameters, Variables, Objective, Constraints (draft/skeleton)
 
 *--------------------------------------------------
 * Indices / Sets
@@ -25,7 +25,7 @@ parameter
     Q(t)     "expected energy in year t (MWh)"
     PVden(s) "PV of expected revenues denominator for scenario s (to be computed later)" ;
 
-    *--------------------------------------------------
+*--------------------------------------------------
 * Variables
 *--------------------------------------------------
 binary variable
@@ -36,8 +36,6 @@ variable
 
 *--------------------------------------------------
 * Objective Function (expected LCOE)
-*   min_x  E_s[  Cbase*(1+phi_s)*(1+r)^(dlt_s)  /  PVden_s  ]
-*   Here: we use PVden(s) as a precomputed parameter.
 *--------------------------------------------------
 equation
     eq_objfn "minimize expected LCOE across scenarios" ;
@@ -49,8 +47,11 @@ eq_objfn..
 * Constraints
 *--------------------------------------------------
 equation
-    prob_norm      "scenario probabilities sum to 1"
-    delay_bounds   "delay bounds placeholder"
-    phi_bounds     "overrun bounds placeholder"
-    feas_num_pos   "numerator positivity"
-    feas_den_pos   "denominator positivity" ;
+    prob_norm      
+    prob_nonneg(s) 
+    delay_lower(s) 
+    delay_upper(s) 
+    overrun_lower(s) 
+    overrun_upper(s) 
+    feas_num_pos(s) 
+    feas_den_pos(s) ;
