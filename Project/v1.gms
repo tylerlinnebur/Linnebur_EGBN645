@@ -1,6 +1,6 @@
 $TITLE Nuclear LCOE Model — Indices, Parameters, Variables, Objective, Constraints (draft)
 
-*--------------------------------------------------
+*-------------------------------------------------------------------
 * Indices / Sets
 set
     s   "scenarios"            / s1*sN /     * e.g., s1*s1000 later
@@ -8,8 +8,8 @@ set
 
 alias (t,tt) ;
 
-*--------------------------------------------------
-* Parameters (placeholders; data filled later)
+*-------------------------------------------------------------------
+* Parameters
 scalar
     Cbase    "baseline EPC capital ($)"
     r        "risk-adjusted discount rate (WACC + premium, decimal)"
@@ -23,7 +23,7 @@ parameter
     Q(t)     "expected energy in year t (MWh)"
     PVden(s) "PV of expected revenues denominator for scenario s (to be computed later)" ;
 
-*--------------------------------------------------
+*-------------------------------------------------------------------
 * Variables
 binary variable
     x        "build decision (1=build, 0=do not build)" ;
@@ -31,7 +31,7 @@ binary variable
 variable
     Z        "objective value: expected LCOE" ;
 
-*--------------------------------------------------
+*-------------------------------------------------------------------
 * Objective Function (expected LCOE)
 equation
     eq_objfn "minimize expected LCOE across scenarios" ;
@@ -39,7 +39,7 @@ equation
 eq_objfn..
     Z =e= sum(s, pi(s) * ( Cbase * (1 + phi(s)) * power(1 + r, dlt(s)) / PVden(s) ) );
 
-*--------------------------------------------------
+*-------------------------------------------------------------------
 * Constraints
 equation
     prob_norm      "scenario probabilities sum to one"
