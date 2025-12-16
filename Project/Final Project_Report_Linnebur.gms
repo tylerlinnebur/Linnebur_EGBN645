@@ -16,20 +16,14 @@ SCALARS
     capFac      "Capacity factor (fraction)"
     lifeY       "Operating lifetime (years)"
 
-* Cost inputs
+* Cost inputs (all in $/MWh from OECD-NEA tables)
     capCost_MWh    "Capital cost component of LCOE (USD/MWh)"
     omCost_MWh     "Operations and maintenance cost (USD/MWh)"
     fuelCost_MWh   "Fuel cost (USD/MWh)"
 
 * Financing inputs
     kappa       "Risk-to-WACC multiplier (per year of schedule risk)"
-    hrs         "Hours per year"
-
-* Financing / cost structure for CRF formulation (units matter)
-    occ     "Overnight capital cost ($/kW)"
-    fom     "Fixed O&M ($/kW-yr)"
-    vom     "Variable O&M ($/MWh)"
-    fuel    "Fuel ($/MWh)";
+    hrs         "Hours per year";
 
 PARAMETERS
     wacc(o)     "Base WACC by ownership"
@@ -37,82 +31,51 @@ PARAMETERS
     sigY(r)     "Schedule risk (years, dispersion proxy)";
 
 * Engineering and production
-* Representative plant capacity based on EIA nuclear fleet data: 95.55 million kW total capacity / 93 reactors
-capMW   = 1000;     * size of the plant
-capFac  = 0.92;     * how often it runs
-lifeY   = 60;       * how long it operates
+capMW   = 1000;
+capFac  = 0.92;
+lifeY   = 60;
 
-* Cost inputs
-* NOTE: Cost components are taken directly from OECD-NEA LCOE tables; capital costs are already annualized and expressed per MWh.
-capCost_MWh  = 50.32;    * Total capital costs (USD/MWh)
-omCost_MWh   = 11.6;     * O&M costs (USD/MWh)
-fuelCost_MWh = 9.33;     * Fuel costs (USD/MWh)
-
-hrs = 8760;
-
-* Map $/MWh fuel from your existing input
-fuel = fuelCost_MWh;
-
-* TODO: replace with real values in correct units
-occ = 0;               * $/kW
-fom = 0;               * $/kW-yr
-vom  = omCost_MWh;     * $/MWh
+* Cost inputs (OECD-NEA, already in $/MWh)
+capCost_MWh  = 50.32;
+omCost_MWh   = 11.6;
+fuelCost_MWh = 9.33;
 
 * Financing inputs
+hrs = 8760;
 wacc("private") = 0.08;
 wacc("public")  = 0.025;
 
-* Permitting / construction assumptions
-* Construction time = Construction Start Date → Commercial Operation Date
-* Values reflect cohort means computed from PRIS reactor-level data
+* Permitting / construction assumptions (PRIS cohort stats)
+buildY("baseline") = 14.92;
+buildY("reform")   = 6.44;
 
-buildY("baseline") = 14.92;   * Mean construction duration, baseline cohort
-buildY("reform")   = 6.44;    * Mean construction duration, reform cohort
-
-* Schedule risk (sample sd of construction duration, years)
-sigY("baseline") = 10.36;     * Fragmented regime
-sigY("reform")   = 0.66;      * Standardized regime
+sigY("baseline") = 10.36;
+sigY("reform")   = 0.66;
 
 * Risk pricing assumption
-kappa = 0.0075;  * 0.75 percentage points per 1.0 year of schedule risk
+kappa = 0.0075;
 
 * -------------------------
 * 2) DERIVED TERMS (LCOE building blocks)
 * -------------------------
 SCALARS
-    annMWh      annual generation (MWh/yr)
-    capkW       capacity (kW);
+    annMWh  "annual generation (MWh/yr)";
 
 PARAMETERS
-    rEff(o,r)       effective WACC after risk adjustment
-    crf(o,r)        capital recovery factor
-    idcMult(o,r)    simple IDC multiplier for construction time
-    capexAnn(o,r)   annualized capital cost ($/yr)
-    fixedAnn(o,r)   annual fixed O&M ($/yr)
-    lcoe(o,r)       LCOE by case ($/MWh);
+    rEff(o,r)    "effective WACC after risk adjustment"
+    idcMult(o,r) "IDC-style multiplier for construction time"
+    lcoe(o,r)    "LCOE by case ($/MWh)";
 
-capkW  = capMW * 1000;
 annMWh = capMW * hrs * capFac;
 
 * Effective WACC: base WACC + kappa * schedule risk
 rEff(o,r) = wacc(o) + kappa * sigY(r);
 
-* CRF = r*(1+r)^N / [(1+r)^N - 1]
-crf(o,r) = rEff(o,r) * power(1 + rEff(o,r), lifeY)
-           / ( power(1 + rEff(o,r), lifeY) - 1 );
+* IDC multiplier using midpoint compounding over construction time
+idcMult(o,r) = (1 + rEff(o,r)) ** (buildY(r)/2);
 
-* Simple IDC multiplier using midpoint compounding:
-* roughly treats spending as spread over build time
-idcMult(o,r) = power(1 + rEff(o,r), buildY(r)/2);
-
-* Annualized capital cost ($/yr)
-capexAnn(o,r) = (occ * capkW * idcMult(o,r)) * crf(o,r);
-
-* Annual fixed O&M cost ($/yr)
-fixedAnn(o,r) = fom * capkW;
-
-* LCOE = (capexAnn + fixedAnn)/annMWh + VOM + Fuel
-lcoe(o,r) = (capexAnn(o,r) + fixedAnn(o,r)) / annMWh + vom + fuel;
+* LCOE: apply IDC multiplier to capital component only, keep O&M and fuel constant
+lcoe(o,r) = capCost_MWh * idcMult(o,r) + omCost_MWh + fuelCost_MWh;
 
 * -------------------------
 * 3) LP: choose the minimum-LCOE case
@@ -137,4 +100,4 @@ SOLVE chooseLCOE USING LP MINIMIZING Z;
 * -------------------------
 * 4) OUTPUT
 * -------------------------
-DISPLAY lcoe, x.l, Z.l, rEff, buildY, sigY, crf, idcMult;
+DISPLAY lcoe, x.l, Z.l, rEff, buildY, sigY, idcMult;

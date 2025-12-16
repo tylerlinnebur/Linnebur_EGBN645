@@ -1,0 +1,296 @@
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 1
+Minimize LCOE, compare permitting reform under private vs public ownership
+C o m p i l a t i o n
+
+
+   2  * NOTE: Reform affects construction duration and schedule risk only; all engineering and operating assumptions are held constant.
+   3   
+   4   
+   5  SETS
+   6      o   ownership type          / private, public /
+   7      r   permitting regime       / baseline, reform /;
+   8   
+   9  * -------------------------
+  10  * 1) INPUT DATA
+  11  * -------------------------
+  12   
+  13  SCALARS
+  14  * Engineering and production
+  15      capMW       "Plant capacity (MW)"
+  16      capFac      "Capacity factor (fraction)"
+  17      lifeY       "Operating lifetime (years)"
+  18   
+  19  * Cost inputs (all in $/MWh from OECD-NEA tables)
+  20      capCost_MWh    "Capital cost component of LCOE (USD/MWh)"
+  21      omCost_MWh     "Operations and maintenance cost (USD/MWh)"
+  22      fuelCost_MWh   "Fuel cost (USD/MWh)"
+  23   
+  24  * Financing inputs
+  25      kappa       "Risk-to-WACC multiplier (per year of schedule risk)"
+  26      hrs         "Hours per year";
+  27   
+  28  PARAMETERS
+  29      wacc(o)     "Base WACC by ownership"
+  30      buildY(r)   "Construction time to COD (years)"
+  31      sigY(r)     "Schedule risk (years, dispersion proxy)";
+  32   
+  33  * Engineering and production
+  34  capMW   = 1000;
+  35  capFac  = 0.92;
+  36  lifeY   = 60;
+  37   
+  38  * Cost inputs (OECD-NEA, already in $/MWh)
+  39  capCost_MWh  = 50.32;
+  40  omCost_MWh   = 11.6;
+  41  fuelCost_MWh = 9.33;
+  42   
+  43  * Financing inputs
+  44  hrs = 8760;
+  45  wacc("private") = 0.08;
+  46  wacc("public")  = 0.025;
+  47   
+  48  * Permitting / construction assumptions (PRIS cohort stats)
+  49  buildY("baseline") = 14.92;
+  50  buildY("reform")   = 6.44;
+  51   
+  52  sigY("baseline") = 10.36;
+  53  sigY("reform")   = 0.66;
+  54   
+  55  * Risk pricing assumption
+  56  kappa = 0.0075;
+  57   
+  58  * -------------------------
+  59  * 2) DERIVED TERMS (LCOE building blocks)
+  60  * -------------------------
+  61  SCALARS
+  62      annMWh  "annual generation (MWh/yr)";
+  63   
+  64  PARAMETERS
+  65      rEff(o,r)    "effective WACC after risk adjustment"
+  66      idcMult(o,r) "IDC-style multiplier for construction time"
+  67      lcoe(o,r)    "LCOE by case ($/MWh)";
+  68   
+  69  annMWh = capMW * hrs * capFac;
+  70   
+  71  * Effective WACC: base WACC + kappa * schedule risk
+  72  rEff(o,r) = wacc(o) + kappa * sigY(r);
+  73   
+  74  * IDC multiplier using midpoint compounding over construction time
+  75  idcMult(o,r) = (1 + rEff(o,r)) ** (buildY(r)/2);
+  76   
+  77  * LCOE: apply IDC multiplier to capital component only, keep O&M and fuel constant
+  78  lcoe(o,r) = capCost_MWh * idcMult(o,r) + omCost_MWh + fuelCost_MWh;
+  79   
+  80  * -------------------------
+  81  * 3) LP: choose the minimum-LCOE case
+  82  * -------------------------
+  83  VARIABLES
+  84      Z   "objective: chosen LCOE ($/MWh)";
+  85   
+  86  POSITIVE VARIABLES
+  87      x(o,r)  "weight on each case (LP will pick the min case)";
+  88   
+  89  EQUATIONS
+  90      objDef
+  91      chooseOne;
+  92   
+  93  objDef..     Z =E= SUM((o,r), lcoe(o,r) * x(o,r));
+  94  chooseOne..  SUM((o,r), x(o,r)) =E= 1;
+  95   
+  96  MODEL chooseLCOE / objDef, chooseOne /;
+  97   
+  98  SOLVE chooseLCOE USING LP MINIMIZING Z;
+  99   
+ 100  * -------------------------
+ 101  * 4) OUTPUT
+ 102  * -------------------------
+ 103  DISPLAY lcoe, x.l, Z.l, rEff, buildY, sigY, idcMult;
+
+
+COMPILATION TIME     =        0.000 SECONDS      3 MB  47.6.0 c2de9d6d WEX-WEI
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 2
+Minimize LCOE, compare permitting reform under private vs public ownership
+Equation Listing    SOLVE chooseLCOE Using LP From line 98
+
+
+---- objDef  =E=  
+
+objDef..  Z - 170.956176366993*x(private,baseline) - 86.3574424639265*x(private,reform) - 125.275241072999*x(public,baseline) - 76.2661078963403*x(public,reform) =E= 0 ; (LHS = 0)
+     
+
+---- chooseOne  =E=  
+
+chooseOne..  x(private,baseline) + x(private,reform) + x(public,baseline) + x(public,reform) =E= 1 ; (LHS = 0, INFES = 1 ****)
+     
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 3
+Minimize LCOE, compare permitting reform under private vs public ownership
+Column Listing      SOLVE chooseLCOE Using LP From line 98
+
+
+---- Z  objective: chosen LCOE ($/MWh)
+
+Z
+                (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
+        1       objDef
+
+
+---- x  weight on each case (LP will pick the min case)
+
+x(private,baseline)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+     -170.9562  objDef
+        1       chooseOne
+
+x(private,reform)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+      -86.3574  objDef
+        1       chooseOne
+
+x(public,baseline)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+     -125.2752  objDef
+        1       chooseOne
+
+REMAINING ENTRY SKIPPED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 4
+Minimize LCOE, compare permitting reform under private vs public ownership
+Range Statistics    SOLVE chooseLCOE Using LP From line 98
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 1.000E+00, 1.000E+00] - Zero values observed as well
+Bound     [min, max] : [        NA,        NA] - Zero values observed as well
+Matrix    [min, max] : [ 1.000E+00, 1.710E+02]
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 5
+Minimize LCOE, compare permitting reform under private vs public ownership
+Model Statistics    SOLVE chooseLCOE Using LP From line 98
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           2     SINGLE EQUATIONS            2
+BLOCKS OF VARIABLES           2     SINGLE VARIABLES            5
+NON ZERO ELEMENTS             9
+
+
+GENERATION TIME      =        0.235 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 6
+Minimize LCOE, compare permitting reform under private vs public ownership
+Solution Report     SOLVE chooseLCOE Using LP From line 98
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   chooseLCOE          OBJECTIVE  Z
+     TYPE    LP                  DIRECTION  MINIMIZE
+     SOLVER  CPLEX               FROM LINE  98
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE               76.2661
+
+ RESOURCE USAGE, LIMIT          0.000 10000000000.000
+ ITERATION COUNT, LIMIT         0    2147483647
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO setup time: 0.00s
+--- GMO memory 0.50 Mb (peak 0.50 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.00 Mb (peak 0.00 Mb)
+--- Starting Cplex
+
+
+--- LP status (1): optimal.
+--- Cplex Time: 0.00sec (det. 0.00 ticks)
+
+
+Optimal solution found
+Objective:           76.266108
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU objDef              .              .              .             1.0000      
+---- EQU chooseOne          1.0000         1.0000         1.0000        76.2661      
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR Z                 -INF           76.2661        +INF             .          
+
+  Z  objective: chosen LCOE ($/MWh)
+
+---- VAR x  weight on each case (LP will pick the min case)
+
+                        LOWER          LEVEL          UPPER         MARGINAL
+
+private.baseline          .              .            +INF           94.6901      
+private.reform            .              .            +INF           10.0913      
+public .baseline          .              .            +INF           49.0091      
+public .reform            .             1.0000        +INF             .          
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/16/25 09:22:14 Page 7
+Minimize LCOE, compare permitting reform under private vs public ownership
+E x e c u t i o n
+
+
+----    103 PARAMETER lcoe  LCOE by case ($/MWh)
+
+           baseline      reform
+
+private     170.956      86.357
+public      125.275      76.266
+
+
+----    103 VARIABLE x.L  weight on each case (LP will pick the min case)
+
+             reform
+
+public        1.000
+
+
+----    103 VARIABLE Z.L                   =       76.266  objective: chosen LCOE ($/MWh)
+
+----    103 PARAMETER rEff  effective WACC after risk adjustment
+
+           baseline      reform
+
+private       0.158       0.085
+public        0.103       0.030
+
+
+----    103 PARAMETER buildY  Construction time to COD (years)
+
+baseline 14.920,    reform    6.440
+
+
+----    103 PARAMETER sigY  Schedule risk (years, dispersion proxy)
+
+baseline 10.360,    reform    0.660
+
+
+----    103 PARAMETER idcMult  IDC-style multiplier for construction time
+
+           baseline      reform
+
+private       2.981       1.300
+public        2.074       1.100
+
+
+
+EXECUTION TIME       =        1.969 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+
+
+USER: Computational Economics EBGN 645               G250827|0002AO-GEN
+      Colorado School of Mines, Operations Research Department  DCE4628
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\Project\Final Project_Report_Linnebur.gms
+Output     C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\Project\Final Project_Report_Linnebur.lst
