@@ -47,12 +47,15 @@ wacc("private") = 0.08;
 wacc("public")  = 0.025;
 
 * Permitting / construction assumptions
-buildY("baseline") = 8;
-buildY("reform")   = 6;
+* Construction time = Construction Start Date → Commercial Operation Date
+* Values reflect cohort means computed from PRIS reactor-level data
 
-* Schedule risk
-sigY("baseline") = 2.0;
-sigY("reform")   = 1.0;
+buildY("baseline") = 14.92;   * Mean construction duration, baseline cohort
+buildY("reform")   = 6.44;    * Mean construction duration, reform cohort
+
+* Schedule risk (sample sd of construction duration, years)
+sigY("baseline") = 10.36;     * Fragmented regime
+sigY("reform")   = 0.66;      * Standardized regime
 
 * Risk pricing assumption
 kappa = 0.0075;  * 0.75 percentage points per 1.0 year of schedule risk
