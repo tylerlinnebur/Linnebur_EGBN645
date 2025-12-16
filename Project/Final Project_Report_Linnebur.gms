@@ -19,11 +19,17 @@ SCALARS
 * Cost inputs
     capCost_MWh    "Capital cost component of LCOE (USD/MWh)"
     omCost_MWh     "Operations and maintenance cost (USD/MWh)"
-    fuelCost_MWh   "Fuel cost (USD/MWh)";
+    fuelCost_MWh   "Fuel cost (USD/MWh)"
 
 * Financing inputs
     kappa       "Risk-to-WACC multiplier (per year of schedule risk)"
-    hrs         "Hours per year";
+    hrs         "Hours per year"
+
+* Financing / cost structure for CRF formulation (units matter)
+    occ     "Overnight capital cost ($/kW)"
+    fom     "Fixed O&M ($/kW-yr)"
+    vom     "Variable O&M ($/MWh)"
+    fuel    "Fuel ($/MWh)";
 
 PARAMETERS
     wacc(o)     "Base WACC by ownership"
@@ -41,6 +47,16 @@ lifeY   = 60;       * how long it operates
 capCost_MWh  = 50.32;    * Total capital costs (USD/MWh)
 omCost_MWh   = 11.6;     * O&M costs (USD/MWh)
 fuelCost_MWh = 9.33;     * Fuel costs (USD/MWh)
+
+hrs = 8760;
+
+* Map $/MWh fuel from your existing input
+fuel = fuelCost_MWh;
+
+* TODO: replace with real values in correct units
+occ = 0;               * $/kW
+fom = 0;               * $/kW-yr
+vom  = omCost_MWh;     * $/MWh
 
 * Financing inputs
 wacc("private") = 0.08;
