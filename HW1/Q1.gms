@@ -1,4 +1,4 @@
-* Q1a.gms
+* Q1.gms - Benny's Bakery (Reference + Counterfactual via switch)
 
 Sets
     i   "products"   / roll, croissant, bread /
@@ -34,28 +34,45 @@ sw_s("ref") = 0;
 sw_s("cf")  = 1;
 
 Variables
-    x(i)   "production (items/week)"
-    z      "total profit ($/week)";
+    x(i)  "production (items/week)"
+    z     "total profit ($/week)";
 
 Positive Variables x;
 
 Equations
-    obj     "maximize weekly profit"
-    labor   "labor-hours constraint"
-    bundle    "roll required with every croissant";
+    obj      "objective definition"
+    labor    "labor-hours constraint"
+    bundle   "roll required with every croissant (switch-controlled)";
 
 obj..
-    z =e= sum(i, pi(i) * x(i));
+    z =e= sum(i, profit(i) * x(i));
 
 labor..
-    sum(i, t(i) * x(i)) =l= H;
+    sum(i, time(i) * x(i)) =l= H;
 
-* Bundling constraint: rolls >= croissants
+Scalar sw "bundling switch used in the solve";
+
+* If sw=0 => x(roll) >= 0 (redundant)
+* If sw=1 => x(roll) >= x(croissant)
 bundle..
-    x("roll") =g= x("croissant");
+    x("roll") =g= sw * x("croissant");
 
-Model bakery / obj, labor /;
+Model bakery / obj, labor, bundle /;
 
-Solve bakery using LP maximizing z;
+* Storage for results
+Parameters
+    xsol(i,s)    "optimal production (items/week)"
+    profsol(s)   "optimal total profit ($/week)"
+    timeUsed(s)  "labor hours used (hours/week)";
 
-Display x.l, z.l;
+Loop(s,
+    sw = sw_s(s);
+
+    Solve bakery using LP maximizing z;
+
+    xsol(i,s)   = x.l(i);
+    profsol(s)  = z.l;
+    timeUsed(s) = sum(i, time(i) * x.l(i));
+);
+
+Display xsol, profsol, timeUsed;
