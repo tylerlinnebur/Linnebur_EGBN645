@@ -1,177 +1,1609 @@
-GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 10/09/25 16:12:08 Page 1
-G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 1
+HW1 - Q2 Junes Jellybeans
 C o m p i l a t i o n
 
 
-   1  * ==== Part (b): Base ====
-   2  Set m  "machines" /X1, X2/
-   3      b  "beans"    /yellow, blue, green, orange, purple/;
-   4   
-   5  Scalar rate  "beans/hour" /100/
-   6         hours "hours/week" /40/;
+   2   
+   3  * Sets
+   4  Set m "machines" / X1, X2 /;
+   5  Set b "bean colors" / yellow, blue, green, orange, purple /;
+   6  Alias(b,bb);
    7   
-   8  Parameter cap(m) "capacity (beans/week)";
-   9  cap(m) = rate*hours;
-  10  * = 4000 (style like hbar etc.)
-  11   
-  12  Parameter rev(b) "net revenue ($/bean)";
-  13  rev("yellow") = 1.00 ;
-  14  rev("blue")   = 1.05 ;
-  15  rev("green")  = 1.07 ;
-  16  rev("orange") = 0.95 ;
-  17  rev("purple") = 0.90 ;
-  18   
-  19  Positive Variable Q(m,b) "production (beans/week)";
-  20  Variable Z "profit ($/week)";
-  21   
-  22  Equation obj, capcon(m);
+   8  * Parameters
+   9  Parameter revenue(b) "net revenue ($/bean)"
+  10  /
+  11      yellow 1.00
+  12      blue   1.05
+  13      green  1.07
+  14      orange 0.95
+  15      purple 0.90
+  16  /;
+  17   
+  18  Scalar rate  "beans per hour per machine (beans/hour)" / 100 /;
+  19  Scalar hours "hours per week per machine (hours/week)" / 40 /;
+  20  Scalar cap   "capacity per machine (beans/week)";
+  21  cap = rate * hours;
+  22  * 4000
   23   
-  24  obj..    Z =e= sum((m,b), rev(b)*Q(m,b));
-  25  capcon(m).. sum(b, Q(m,b)) =l= cap(m);
+  24  Scalar dev "max deviation fraction for near-equal constraint" / 0.05 /;
+  25  Scalar big "big-M for switching constraints" / 1e6 /;
   26   
-  27  Model base /all/;
-  28  Solve base using lp maximizing Z;
-  29   
-  30  * ------- Export Part (b) -------
-  31  Parameter Qb(m,b) "solution Q for part (b)";
-  32  Qb(m,b) = Q.l(m,b);
-  33   
-  34  Parameter Tb(b) "totals by color (b) for part (b)";
-  35  Tb(b) = sum(m, Qb(m,b));
+  27  * Machine-color valid combinations for part (d)
+  28  Set m_b(m,b) "valid machine-color combinations";
+  29  m_b(m,b) = no;
+  30  m_b("X1","yellow") = yes;
+  31  m_b("X1","blue")   = yes;
+  32  m_b("X1","green")  = yes;
+  33  m_b("X2","yellow") = yes;
+  34  m_b("X2","orange") = yes;
+  35  m_b("X2","purple") = yes;
   36   
-  37  Scalar Zb "profit for part (b)";
-  38  Zb = Z.l;
-  39   
-  40  File fb /'part_b.csv'/; put fb;
-  41  put 'machine,bean,Q_b,Total_by_bean,Profit_b' /;
-  42   
-  43  * write rows per machine-color (Q) with blank total/profit columns
-  44  loop(m,
-  45    loop(b,
-  46      put m.tl ',' b.tl ',' Qb(m,b):0:4 ',' '' ',' '' /;
-  47    );
-  48  );
-  49   
-  50  * write totals by bean (aggregate across machines)
-  51  loop(b,
-  52    put 'ALL' ',' b.tl ',' '' ',' Tb(b):0:4 ',' '' /;
-  53  );
-  54   
-  55  * final line with profit
-  56  put 'ALL,ALL,,' ',' Zb:0:2 /;
-  57   
-  58  * ==== Part (c): add near-equal constraint (±5%) ====
-  59  Alias (b,bb);
-  60   
-  61  Positive Variable T(b) "total by color (beans/week)";
-  62  Equation defTot(b), nearUp(b,bb), nearLo(b,bb);
-  63   
-  64  defTot(b).. T(b) =e= sum(m, Q(m,b));
-  65   
-  66  * enforce for all pairs b != bb using ord() as in your notes
-  67  nearUp(b,bb)$[ord(b)<>ord(bb)].. T(b) =l= 1.05*T(bb);
-  68  nearLo(b,bb)$[ord(b)<>ord(bb)].. T(b) =g= 0.95*T(bb);
-  69   
-  70  Model equalMix /obj, capcon, defTot, nearUp, nearLo/;
-  71  Solve equalMix using lp maximizing Z;
-  72   
-  73  * ------- Export Part (c) -------
-  74  Parameter Qc(m,b) "solution Q for part (c)";
-  75  Qc(m,b) = Q.l(m,b);
-  76   
-  77  Parameter Tc(b) "totals by color (b) for part (c)";
-  78  Tc(b) = sum(m, Qc(m,b));  * equals T.l(b) if you prefer: Tc(b) = T.l(b);
-****                            $409                 $7,321,140,10,140,36,409
-****   7  '(' expected
-****  10  ',' expected
-****  36  '=' or '..' or ':=' or '$=' operator expected
-****      rest of statement ignored
-**** 140  Unknown symbol
-**** 321  A '(' following an 'IF' is missing. We assumed you wanted to write
-****      an if-statement. This statement has been introduced with GAMS 2.25
-****      and it is possible that 'if' was used as an identifier.
-****      The GAMS parameter G205=1 can be used to run with the old syntax.
-**** 409  Unrecognizable item - skip to find a new statement
-****        looking for a ';' or a key word to get started again
+  37  Parameter mb(m,b) "1 if (m,b) allowed under part (d), else 0";
+  38  mb(m,b) = 0;
+  39  mb(m,b)$m_b(m,b) = 1;
+  40   
+  41  * Scenario switches
+  42  Set s "scenarios" / b_base, c_equal, d_restrict, cd_both /;
+  43   
+  44  Parameter
+  45      sw_equal_s(s)    "1 activates near-equal constraints"
+  46      sw_restrict_s(s) "1 activates machine-color restriction";
+  47   
+  48  sw_equal_s(s)    = 0;
+  49  sw_restrict_s(s) = 0;
+  50   
+  51  sw_equal_s("c_equal")        = 1;
+  52  sw_restrict_s("d_restrict")  = 1;
+  53   
+  54  sw_equal_s("cd_both")        = 1;
+  55  sw_restrict_s("cd_both")     = 1;
+  56   
+  57  Scalar sw_equal, sw_restrict;
+  58   
+  59  * Decision variables
+  60  Variables
+  61      Q(m,b)     "production on machine m of color b (beans/week)"
+  62      Qcolor(b)  "total production of color b across machines (beans/week)"
+  63      z          "profit ($/week)";
+  64   
+  65  Positive Variable Q, Qcolor;
+  66   
+  67  * Equations
+  68  Equations
+  69      obj                     "maximize total net revenue"
+  70      def_color(b)            "define totals by color"
+  71      cap_machine(m)          "machine weekly capacity"
+  72      eq_prodlimit_upper(b,bb) "near-equal upper bound (switchable)"
+  73      eq_prodlimit_lower(b,bb) "near-equal lower bound (switchable)"
+  74      restrict_mb(m,b)        "machine-color restriction (switchable)";
+  75   
+  76  obj.. z =e= sum((m,b), revenue(b) * Q(m,b));
+  77   
+  78  def_color(b).. Qcolor(b) =e= sum(m, Q(m,b));
   79   
-  80  Scalar Zc "profit for part (c)";
-  81  Zc = Z.l;
-  82   
-  83  File fc /'part_c.csv'/; put fc;
-  84  put 'machine,bean,Q_c,Total_by_bean,Profit_c' /;
+  80  cap_machine(m).. sum(b, Q(m,b)) =l= cap;
+  81   
+  82  * Part (c): near-equal across colors, switched with big-M
+  83  eq_prodlimit_upper(b,bb)..
+  84      Qcolor(b) =l= (1 + dev) * Qcolor(bb) + big * (1 - sw_equal);
   85   
-  86  * per machine-color decisions
-  87  loop(m,
-  88    loop(b,
-  89      put m.tl ',' b.tl ',' Qc(m,b):0:4 ',' '' ',' '' /;
-  90    );
-  91  );
+  86  eq_prodlimit_lower(b,bb)..
+  87      Qcolor(b) =g= (1 - dev) * Qcolor(bb) - big * (1 - sw_equal);
+  88   
+  89  * Part (d): switched machine-color restriction
+  90  restrict_mb(m,b)..
+  91      Q(m,b) =l= cap * ( mb(m,b) + (1 - mb(m,b)) * (1 - sw_restrict) );
   92   
-  93  * totals by bean (from Tc)
-  94  loop(b,
-  95    put 'ALL' ',' b.tl ',' '' ',' Tc(b):0:4 ',' '' /;
-  96  );
-  97   
-  98  * final profit line
-  99  put 'ALL,ALL,,' ',' Zc:0:2 /;
+  93  Model Jelly / obj, def_color, cap_machine, eq_prodlimit_upper, eq_prodlimit_lower, restrict_mb /;
+  94   
+  95  * Storage for results
+  96  Parameter
+  97      Q_sol(s,m,b)      "solution Q by scenario (beans/week)"
+  98      Qcolor_sol(s,b)   "solution totals by color (beans/week)"
+  99      z_sol(s)          "profit by scenario ($/week)";
  100   
- 101  * ==== Part (d): feasibility by machine-color ====
- 102  Set m_b(m,b) "feasible (m,b) pairs";
- 103  * X1 can: yellow, blue, green
- 104  m_b("X1","yellow") = yes ;
- 105  m_b("X1","blue")   = yes ;
- 106  m_b("X1","green")  = yes ;
- 107  * X2 can: yellow, orange, purple
- 108  m_b("X2","yellow") = yes ;
- 109  m_b("X2","orange") = yes ;
- 110  m_b("X2","purple") = yes ;
+ 101  loop(s,
+ 102      sw_equal    = sw_equal_s(s);
+ 103      sw_restrict = sw_restrict_s(s);
+ 104   
+ 105      solve Jelly using lp maximizing z;
+ 106   
+ 107      Q_sol(s,m,b)    = Q.l(m,b);
+ 108      Qcolor_sol(s,b) = Qcolor.l(b);
+ 109      z_sol(s)        = z.l;
+ 110  );
  111   
- 112  * Re-define obj and cap using only valid (m,b)
- 113  Equation obj_d, capcon_d(m);
- 114   
- 115  obj_d..       Z =e= sum((m,b)$m_b(m,b), rev(b)*Q(m,b));
- 116  capcon_d(m).. sum(b$ m_b(m,b), Q(m,b)) =l= cap(m);
- 117   
- 118  Model restricted /obj_d, capcon_d/;
- 119  Solve restricted using lp maximizing Z;
-****                                        $257
-**** 257  Solve statement not checked because of previous errors
- 120   
- 121  * ------- Export Part (d) -------
- 122  Parameter Qd(m,b) "solution Q for part (d)";
- 123  Qd(m,b) = Q.l(m,b);
- 124   
- 125  Parameter Td(b) "totals by color (b) for part (d)";
- 126  Td(b) = sum(m$ m_b(m,b), Qd(m,b));  * only count feasible pairs
-****                                      $409
-**** 409  Unrecognizable item - skip to find a new statement
-****        looking for a ';' or a key word to get started again
- 127   
- 128  Scalar Zd "profit for part (d)";
- 129  Zd = Z.l;
- 130   
- 131  File fd /'part_d.csv'/; put fd;
- 132  put 'machine,bean,Q_d,Total_by_bean,Profit_d' /;
- 133   
- 134  * only export feasible (m,b) rows so CSV reflects the restriction
- 135  loop(m,
- 136    loop(b$ m_b(m,b),
- 137      put m.tl ',' b.tl ',' Qd(m,b):0:4 ',' '' ',' '' /;
- 138    );
- 139  );
- 140   
- 141  * totals by bean (again only over feasible pairs)
- 142  loop(b,
- 143    put 'ALL' ',' b.tl ',' '' ',' Td(b):0:4 ',' '' /;
- 144  );
- 145   
- 146  * final profit line
- 147  put 'ALL,ALL,,' ',' Zd:0:2 /;
-
-**** 10 ERROR(S)   0 WARNING(S)
+ 112  display cap, revenue, Q_sol, Qcolor_sol, z_sol;
 
 
-COMPILATION TIME     =        0.015 SECONDS      3 MB  47.6.0 c2de9d6d WEX-WEI
+COMPILATION TIME     =        0.000 SECONDS      3 MB  47.6.0 c2de9d6d WEX-WEI
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 2
+HW1 - Q2 Junes Jellybeans
+Equation Listing    SOLVE Jelly Using LP From line 105
+
+
+---- obj  =E=  maximize total net revenue
+
+obj..  - Q(X1,yellow) - 1.05*Q(X1,blue) - 1.07*Q(X1,green) - 0.95*Q(X1,orange) - 0.9*Q(X1,purple) - Q(X2,yellow) - 1.05*Q(X2,blue) - 1.07*Q(X2,green) - 0.95*Q(X2,orange) - 0.9*Q(X2,purple) + z =E= 0 ; (LHS = 0)
+     
+
+---- def_color  =E=  define totals by color
+
+def_color(yellow)..  - Q(X1,yellow) - Q(X2,yellow) + Qcolor(yellow) =E= 0 ; (LHS = 0)
+     
+def_color(blue)..  - Q(X1,blue) - Q(X2,blue) + Qcolor(blue) =E= 0 ; (LHS = 0)
+     
+def_color(green)..  - Q(X1,green) - Q(X2,green) + Qcolor(green) =E= 0 ; (LHS = 0)
+     
+REMAINING 2 ENTRIES SKIPPED
+
+
+---- cap_machine  =L=  machine weekly capacity
+
+cap_machine(X1)..  Q(X1,yellow) + Q(X1,blue) + Q(X1,green) + Q(X1,orange) + Q(X1,purple) =L= 4000 ; (LHS = 0)
+     
+cap_machine(X2)..  Q(X2,yellow) + Q(X2,blue) + Q(X2,green) + Q(X2,orange) + Q(X2,purple) =L= 4000 ; (LHS = 0)
+     
+
+---- eq_prodlimit_upper  =L=  near-equal upper bound (switchable)
+
+eq_prodlimit_upper(yellow,yellow)..  - 0.05*Qcolor(yellow) =L= 1000000 ; (LHS = 0)
+     
+eq_prodlimit_upper(yellow,blue)..  Qcolor(yellow) - 1.05*Qcolor(blue) =L= 1000000 ; (LHS = 0)
+     
+eq_prodlimit_upper(yellow,green)..  Qcolor(yellow) - 1.05*Qcolor(green) =L= 1000000 ; (LHS = 0)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- eq_prodlimit_lower  =G=  near-equal lower bound (switchable)
+
+eq_prodlimit_lower(yellow,yellow)..  0.05*Qcolor(yellow) =G= -1000000 ; (LHS = 0)
+     
+eq_prodlimit_lower(yellow,blue)..  Qcolor(yellow) - 0.95*Qcolor(blue) =G= -1000000 ; (LHS = 0)
+     
+eq_prodlimit_lower(yellow,green)..  Qcolor(yellow) - 0.95*Qcolor(green) =G= -1000000 ; (LHS = 0)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- restrict_mb  =L=  machine-color restriction (switchable)
+
+restrict_mb(X1,yellow)..  Q(X1,yellow) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,blue)..  Q(X1,blue) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,green)..  Q(X1,green) =L= 4000 ; (LHS = 0)
+     
+REMAINING 7 ENTRIES SKIPPED
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 3
+HW1 - Q2 Junes Jellybeans
+Column Listing      SOLVE Jelly Using LP From line 105
+
+
+---- Q  production on machine m of color b (beans/week)
+
+Q(X1,yellow)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1       obj
+       -1       def_color(yellow)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,yellow)
+
+Q(X1,blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1.05    obj
+       -1       def_color(blue)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,blue)
+
+Q(X1,green)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+       -1.07    obj
+       -1       def_color(green)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,green)
+
+REMAINING 7 ENTRIES SKIPPED
+
+---- Qcolor  total production of color b across machines (beans/week)
+
+Qcolor(yellow)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       def_color(yellow)
+       -0.05    eq_prodlimit_upper(yellow,yellow)
+        1       eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(yellow,green)
+        1       eq_prodlimit_upper(yellow,orange)
+        1       eq_prodlimit_upper(yellow,purple)
+       -1.05    eq_prodlimit_upper(blue,yellow)
+       -1.05    eq_prodlimit_upper(green,yellow)
+       -1.05    eq_prodlimit_upper(orange,yellow)
+       -1.05    eq_prodlimit_upper(purple,yellow)
+        0.05    eq_prodlimit_lower(yellow,yellow)
+        1       eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(yellow,green)
+        1       eq_prodlimit_lower(yellow,orange)
+        1       eq_prodlimit_lower(yellow,purple)
+       -0.95    eq_prodlimit_lower(blue,yellow)
+       -0.95    eq_prodlimit_lower(green,yellow)
+       -0.95    eq_prodlimit_lower(orange,yellow)
+       -0.95    eq_prodlimit_lower(purple,yellow)
+
+Qcolor(blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       def_color(blue)
+       -1.05    eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(blue,yellow)
+       -0.05    eq_prodlimit_upper(blue,blue)
+        1       eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(blue,orange)
+        1       eq_prodlimit_upper(blue,purple)
+       -1.05    eq_prodlimit_upper(green,blue)
+       -1.05    eq_prodlimit_upper(orange,blue)
+       -1.05    eq_prodlimit_upper(purple,blue)
+       -0.95    eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(blue,yellow)
+        0.05    eq_prodlimit_lower(blue,blue)
+        1       eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(blue,orange)
+        1       eq_prodlimit_lower(blue,purple)
+       -0.95    eq_prodlimit_lower(green,blue)
+       -0.95    eq_prodlimit_lower(orange,blue)
+       -0.95    eq_prodlimit_lower(purple,blue)
+
+Qcolor(green)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       def_color(green)
+       -1.05    eq_prodlimit_upper(yellow,green)
+       -1.05    eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(green,yellow)
+        1       eq_prodlimit_upper(green,blue)
+       -0.05    eq_prodlimit_upper(green,green)
+        1       eq_prodlimit_upper(green,orange)
+        1       eq_prodlimit_upper(green,purple)
+       -1.05    eq_prodlimit_upper(orange,green)
+       -1.05    eq_prodlimit_upper(purple,green)
+       -0.95    eq_prodlimit_lower(yellow,green)
+       -0.95    eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(green,yellow)
+        1       eq_prodlimit_lower(green,blue)
+        0.05    eq_prodlimit_lower(green,green)
+        1       eq_prodlimit_lower(green,orange)
+        1       eq_prodlimit_lower(green,purple)
+       -0.95    eq_prodlimit_lower(orange,green)
+       -0.95    eq_prodlimit_lower(purple,green)
+
+REMAINING 2 ENTRIES SKIPPED
+
+---- z  profit ($/week)
+
+z
+                (.LO, .L, .UP, .M = -INF, 0, +INF, 0)
+        1       obj
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 4
+HW1 - Q2 Junes Jellybeans
+Range Statistics    SOLVE Jelly Using LP From line 105
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 4.000E+03, 1.000E+06] - Zero values observed as well
+Bound     [min, max] : [        NA,        NA] - Zero values observed as well
+Matrix    [min, max] : [ 5.000E-02, 1.070E+00]
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 5
+HW1 - Q2 Junes Jellybeans
+Model Statistics    SOLVE Jelly Using LP From line 105
+
+
+LOOPS                                    s   b_base
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           6     SINGLE EQUATIONS           68
+BLOCKS OF VARIABLES           3     SINGLE VARIABLES           16
+NON ZERO ELEMENTS           136
+
+
+GENERATION TIME      =        0.016 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+               L O O P S                  s b_base
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 6
+HW1 - Q2 Junes Jellybeans
+Solution Report     SOLVE Jelly Using LP From line 105
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   Jelly               OBJECTIVE  z
+     TYPE    LP                  DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  105
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE             8560.0000
+
+ RESOURCE USAGE, LIMIT          0.016 10000000000.000
+ ITERATION COUNT, LIMIT         0    2147483647
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO setup time: 0.00s
+--- GMO memory 0.51 Mb (peak 0.51 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.00 Mb (peak 0.01 Mb)
+--- Starting Cplex
+
+
+--- LP status (1): optimal.
+--- Cplex Time: 0.00sec (det. 0.05 ticks)
+
+
+Optimal solution found
+Objective:         8560.000000
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU obj                 .              .              .             1.0000      
+
+  obj  maximize total net revenue
+
+---- EQU def_color  define totals by color
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .              .              .             EPS         
+blue            .              .              .             EPS         
+green           .              .              .             EPS         
+orange          .              .              .             EPS         
+purple          .              .              .             EPS         
+
+---- EQU cap_machine  machine weekly capacity
+
+          LOWER          LEVEL          UPPER         MARGINAL
+
+X1        -INF         4000.0000      4000.0000         1.0700      
+X2        -INF         4000.0000      4000.0000         1.0700      
+
+---- EQU eq_prodlimit_upper  near-equal upper bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow        -INF             .       1000000.0000          .          
+yellow.blue          -INF             .       1000000.0000          .          
+yellow.green         -INF        -8400.0000   1000000.0000          .          
+yellow.orange        -INF             .       1000000.0000          .          
+yellow.purple        -INF             .       1000000.0000          .          
+blue  .yellow        -INF             .       1000000.0000          .          
+blue  .blue          -INF             .       1000000.0000          .          
+blue  .green         -INF        -8400.0000   1000000.0000          .          
+blue  .orange        -INF             .       1000000.0000          .          
+blue  .purple        -INF             .       1000000.0000          .          
+green .yellow        -INF         8000.0000   1000000.0000          .          
+green .blue          -INF         8000.0000   1000000.0000          .          
+green .green         -INF         -400.0000   1000000.0000          .          
+green .orange        -INF         8000.0000   1000000.0000          .          
+green .purple        -INF         8000.0000   1000000.0000          .          
+orange.yellow        -INF             .       1000000.0000          .          
+orange.blue          -INF             .       1000000.0000          .          
+orange.green         -INF        -8400.0000   1000000.0000          .          
+orange.orange        -INF             .       1000000.0000          .          
+orange.purple        -INF             .       1000000.0000          .          
+purple.yellow        -INF             .       1000000.0000          .          
+purple.blue          -INF             .       1000000.0000          .          
+purple.green         -INF        -8400.0000   1000000.0000          .          
+purple.orange        -INF             .       1000000.0000          .          
+purple.purple        -INF             .       1000000.0000          .          
+
+---- EQU eq_prodlimit_lower  near-equal lower bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow   -1.000000E+6          .            +INF             .          
+yellow.blue     -1.000000E+6          .            +INF             .          
+yellow.green    -1.000000E+6     -7600.0000        +INF             .          
+yellow.orange   -1.000000E+6          .            +INF             .          
+yellow.purple   -1.000000E+6          .            +INF             .          
+blue  .yellow   -1.000000E+6          .            +INF             .          
+blue  .blue     -1.000000E+6          .            +INF             .          
+blue  .green    -1.000000E+6     -7600.0000        +INF             .          
+blue  .orange   -1.000000E+6          .            +INF             .          
+blue  .purple   -1.000000E+6          .            +INF             .          
+green .yellow   -1.000000E+6      8000.0000        +INF             .          
+green .blue     -1.000000E+6      8000.0000        +INF             .          
+green .green    -1.000000E+6       400.0000        +INF             .          
+green .orange   -1.000000E+6      8000.0000        +INF             .          
+green .purple   -1.000000E+6      8000.0000        +INF             .          
+orange.yellow   -1.000000E+6          .            +INF             .          
+orange.blue     -1.000000E+6          .            +INF             .          
+orange.green    -1.000000E+6     -7600.0000        +INF             .          
+orange.orange   -1.000000E+6          .            +INF             .          
+orange.purple   -1.000000E+6          .            +INF             .          
+purple.yellow   -1.000000E+6          .            +INF             .          
+purple.blue     -1.000000E+6          .            +INF             .          
+purple.green    -1.000000E+6     -7600.0000        +INF             .          
+purple.orange   -1.000000E+6          .            +INF             .          
+purple.purple   -1.000000E+6          .            +INF             .          
+
+---- EQU restrict_mb  machine-color restriction (switchable)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow        -INF             .          4000.0000          .          
+X1.blue          -INF             .          4000.0000          .          
+X1.green         -INF         4000.0000      4000.0000          .          
+X1.orange        -INF             .          4000.0000          .          
+X1.purple        -INF             .          4000.0000          .          
+X2.yellow        -INF             .          4000.0000          .          
+X2.blue          -INF             .          4000.0000          .          
+X2.green         -INF         4000.0000      4000.0000          .          
+X2.orange        -INF             .          4000.0000          .          
+X2.purple        -INF             .          4000.0000          .          
+
+---- VAR Q  production on machine m of color b (beans/week)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow          .              .            +INF           -0.0700      
+X1.blue            .              .            +INF           -0.0200      
+X1.green           .          4000.0000        +INF             .          
+X1.orange          .              .            +INF           -0.1200      
+X1.purple          .              .            +INF           -0.1700      
+X2.yellow          .              .            +INF           -0.0700      
+X2.blue            .              .            +INF           -0.0200      
+X2.green           .          4000.0000        +INF             .          
+X2.orange          .              .            +INF           -0.1200      
+X2.purple          .              .            +INF           -0.1700      
+
+---- VAR Qcolor  total production of color b across machines (beans/week)
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .              .            +INF             .          
+blue            .              .            +INF             .          
+green           .          8000.0000        +INF             .          
+orange          .              .            +INF             .          
+purple          .              .            +INF             .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR z                 -INF         8560.0000        +INF             .          
+
+  z  profit ($/week)
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 7
+HW1 - Q2 Junes Jellybeans
+Equation Listing    SOLVE Jelly Using LP From line 105
+
+
+---- obj  =E=  maximize total net revenue
+
+obj..  - Q(X1,yellow) - 1.05*Q(X1,blue) - 1.07*Q(X1,green) - 0.95*Q(X1,orange) - 0.9*Q(X1,purple) - Q(X2,yellow) - 1.05*Q(X2,blue) - 1.07*Q(X2,green) - 0.95*Q(X2,orange) - 0.9*Q(X2,purple) + z =E= 0 ; (LHS = 0)
+     
+
+---- def_color  =E=  define totals by color
+
+def_color(yellow)..  - Q(X1,yellow) - Q(X2,yellow) + Qcolor(yellow) =E= 0 ; (LHS = 0)
+     
+def_color(blue)..  - Q(X1,blue) - Q(X2,blue) + Qcolor(blue) =E= 0 ; (LHS = 0)
+     
+def_color(green)..  - Q(X1,green) - Q(X2,green) + Qcolor(green) =E= 0 ; (LHS = 0)
+     
+REMAINING 2 ENTRIES SKIPPED
+
+
+---- cap_machine  =L=  machine weekly capacity
+
+cap_machine(X1)..  Q(X1,yellow) + Q(X1,blue) + Q(X1,green) + Q(X1,orange) + Q(X1,purple) =L= 4000 ; (LHS = 4000)
+     
+cap_machine(X2)..  Q(X2,yellow) + Q(X2,blue) + Q(X2,green) + Q(X2,orange) + Q(X2,purple) =L= 4000 ; (LHS = 4000)
+     
+
+---- eq_prodlimit_upper  =L=  near-equal upper bound (switchable)
+
+eq_prodlimit_upper(yellow,yellow)..  - 0.05*Qcolor(yellow) =L= 0 ; (LHS = 0)
+     
+eq_prodlimit_upper(yellow,blue)..  Qcolor(yellow) - 1.05*Qcolor(blue) =L= 0 ; (LHS = 0)
+     
+eq_prodlimit_upper(yellow,green)..  Qcolor(yellow) - 1.05*Qcolor(green) =L= 0 ; (LHS = -8400)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- eq_prodlimit_lower  =G=  near-equal lower bound (switchable)
+
+eq_prodlimit_lower(yellow,yellow)..  0.05*Qcolor(yellow) =G= 0 ; (LHS = 0)
+     
+eq_prodlimit_lower(yellow,blue)..  Qcolor(yellow) - 0.95*Qcolor(blue) =G= 0 ; (LHS = 0)
+     
+eq_prodlimit_lower(yellow,green)..  Qcolor(yellow) - 0.95*Qcolor(green) =G= 0 ; (LHS = -7600, INFES = 7600 ****)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- restrict_mb  =L=  machine-color restriction (switchable)
+
+restrict_mb(X1,yellow)..  Q(X1,yellow) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,blue)..  Q(X1,blue) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,green)..  Q(X1,green) =L= 4000 ; (LHS = 4000)
+     
+REMAINING 7 ENTRIES SKIPPED
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 8
+HW1 - Q2 Junes Jellybeans
+Column Listing      SOLVE Jelly Using LP From line 105
+
+
+---- Q  production on machine m of color b (beans/week)
+
+Q(X1,yellow)
+                (.LO, .L, .UP, .M = 0, 0, +INF, -0.0700000000000001)
+       -1       obj
+       -1       def_color(yellow)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,yellow)
+
+Q(X1,blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, -0.02)
+       -1.05    obj
+       -1       def_color(blue)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,blue)
+
+Q(X1,green)
+                (.LO, .L, .UP, .M = 0, 4000, +INF, 0)
+       -1.07    obj
+       -1       def_color(green)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,green)
+
+REMAINING 7 ENTRIES SKIPPED
+
+---- Qcolor  total production of color b across machines (beans/week)
+
+Qcolor(yellow)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       def_color(yellow)
+       -0.05    eq_prodlimit_upper(yellow,yellow)
+        1       eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(yellow,green)
+        1       eq_prodlimit_upper(yellow,orange)
+        1       eq_prodlimit_upper(yellow,purple)
+       -1.05    eq_prodlimit_upper(blue,yellow)
+       -1.05    eq_prodlimit_upper(green,yellow)
+       -1.05    eq_prodlimit_upper(orange,yellow)
+       -1.05    eq_prodlimit_upper(purple,yellow)
+        0.05    eq_prodlimit_lower(yellow,yellow)
+        1       eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(yellow,green)
+        1       eq_prodlimit_lower(yellow,orange)
+        1       eq_prodlimit_lower(yellow,purple)
+       -0.95    eq_prodlimit_lower(blue,yellow)
+       -0.95    eq_prodlimit_lower(green,yellow)
+       -0.95    eq_prodlimit_lower(orange,yellow)
+       -0.95    eq_prodlimit_lower(purple,yellow)
+
+Qcolor(blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       def_color(blue)
+       -1.05    eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(blue,yellow)
+       -0.05    eq_prodlimit_upper(blue,blue)
+        1       eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(blue,orange)
+        1       eq_prodlimit_upper(blue,purple)
+       -1.05    eq_prodlimit_upper(green,blue)
+       -1.05    eq_prodlimit_upper(orange,blue)
+       -1.05    eq_prodlimit_upper(purple,blue)
+       -0.95    eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(blue,yellow)
+        0.05    eq_prodlimit_lower(blue,blue)
+        1       eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(blue,orange)
+        1       eq_prodlimit_lower(blue,purple)
+       -0.95    eq_prodlimit_lower(green,blue)
+       -0.95    eq_prodlimit_lower(orange,blue)
+       -0.95    eq_prodlimit_lower(purple,blue)
+
+Qcolor(green)
+                (.LO, .L, .UP, .M = 0, 8000, +INF, 0)
+        1       def_color(green)
+       -1.05    eq_prodlimit_upper(yellow,green)
+       -1.05    eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(green,yellow)
+        1       eq_prodlimit_upper(green,blue)
+       -0.05    eq_prodlimit_upper(green,green)
+        1       eq_prodlimit_upper(green,orange)
+        1       eq_prodlimit_upper(green,purple)
+       -1.05    eq_prodlimit_upper(orange,green)
+       -1.05    eq_prodlimit_upper(purple,green)
+       -0.95    eq_prodlimit_lower(yellow,green)
+       -0.95    eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(green,yellow)
+        1       eq_prodlimit_lower(green,blue)
+        0.05    eq_prodlimit_lower(green,green)
+        1       eq_prodlimit_lower(green,orange)
+        1       eq_prodlimit_lower(green,purple)
+       -0.95    eq_prodlimit_lower(orange,green)
+       -0.95    eq_prodlimit_lower(purple,green)
+
+REMAINING 2 ENTRIES SKIPPED
+
+---- z  profit ($/week)
+
+z
+                (.LO, .L, .UP, .M = -INF, 8560, +INF, 0)
+        1       obj
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 9
+HW1 - Q2 Junes Jellybeans
+Range Statistics    SOLVE Jelly Using LP From line 105
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 4.000E+03, 4.000E+03] - Zero values observed as well
+Bound     [min, max] : [        NA,        NA] - Zero values observed as well
+Matrix    [min, max] : [ 5.000E-02, 1.070E+00]
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 10
+HW1 - Q2 Junes Jellybeans
+Model Statistics    SOLVE Jelly Using LP From line 105
+
+
+LOOPS                                    s   c_equal
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           6     SINGLE EQUATIONS           68
+BLOCKS OF VARIABLES           3     SINGLE VARIABLES           16
+NON ZERO ELEMENTS           136
+
+
+GENERATION TIME      =        0.015 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+               L O O P S                  s c_equal
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 11
+HW1 - Q2 Junes Jellybeans
+Solution Report     SOLVE Jelly Using LP From line 105
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   Jelly               OBJECTIVE  z
+     TYPE    LP                  DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  105
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE             7962.7184
+
+ RESOURCE USAGE, LIMIT          0.016 10000000000.000
+ ITERATION COUNT, LIMIT         8    2147483647
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO setup time: 0.00s
+--- GMO memory 0.51 Mb (peak 0.51 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.00 Mb (peak 0.01 Mb)
+--- Starting Cplex
+
+
+--- LP status (1): optimal.
+--- Cplex Time: 0.02sec (det. 0.19 ticks)
+
+
+Optimal solution found
+Objective:         7962.718447
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU obj                 .              .              .             1.0000      
+
+  obj  maximize total net revenue
+
+---- EQU def_color  define totals by color
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .              .              .            -0.0047      
+blue            .              .              .            -0.0547      
+green           .              .              .            -0.0747      
+orange          .              .              .             0.0453      
+purple          .              .              .             0.0953      
+
+---- EQU cap_machine  machine weekly capacity
+
+          LOWER          LEVEL          UPPER         MARGINAL
+
+X1        -INF         4000.0000      4000.0000         0.9953      
+X2        -INF         4000.0000      4000.0000         0.9953      
+
+---- EQU eq_prodlimit_upper  near-equal upper bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow        -INF          -81.5534          .              .          
+yellow.blue          -INF          -81.5534          .              .          
+yellow.green         -INF          -81.5534          .              .          
+yellow.orange        -INF      4.547474E-13          .              .          
+yellow.purple        -INF             .              .             0.0047      
+blue  .yellow        -INF          -81.5534          .              .          
+blue  .blue          -INF          -81.5534          .              .          
+blue  .green         -INF          -81.5534          .              .          
+blue  .orange        -INF      4.547474E-13          .              .          
+blue  .purple        -INF             .              .             0.0547      
+green .yellow        -INF          -81.5534          .              .          
+green .blue          -INF          -81.5534          .              .          
+green .green         -INF          -81.5534          .              .          
+green .orange        -INF             .              .             0.0432      
+green .purple        -INF             .              .             0.0315      
+orange.yellow        -INF         -159.2233          .              .          
+orange.blue          -INF         -159.2233          .              .          
+orange.green         -INF         -159.2233          .              .          
+orange.orange        -INF          -77.6699          .              .          
+orange.purple        -INF          -77.6699          .              .          
+purple.yellow        -INF         -159.2233          .              .          
+purple.blue          -INF         -159.2233          .              .          
+purple.green         -INF         -159.2233          .              .          
+purple.orange        -INF          -77.6699          .              .          
+purple.purple        -INF          -77.6699          .              .          
+
+---- EQU eq_prodlimit_lower  near-equal lower bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow          .            81.5534        +INF             .          
+yellow.blue            .            81.5534        +INF             .          
+yellow.green           .            81.5534        +INF             .          
+yellow.orange          .           155.3398        +INF             .          
+yellow.purple          .           155.3398        +INF             .          
+blue  .yellow          .            81.5534        +INF             .          
+blue  .blue            .            81.5534        +INF             .          
+blue  .green           .            81.5534        +INF             .          
+blue  .orange          .           155.3398        +INF             .          
+blue  .purple          .           155.3398        +INF             .          
+green .yellow          .            81.5534        +INF             .          
+green .blue            .            81.5534        +INF             .          
+green .green           .            81.5534        +INF             .          
+green .orange          .           155.3398        +INF             .          
+green .purple          .           155.3398        +INF             .          
+orange.yellow          .             3.8835        +INF             .          
+orange.blue            .             3.8835        +INF             .          
+orange.green           .             3.8835        +INF             .          
+orange.orange          .            77.6699        +INF             .          
+orange.purple          .            77.6699        +INF             .          
+purple.yellow          .             3.8835        +INF             .          
+purple.blue            .             3.8835        +INF             .          
+purple.green           .             3.8835        +INF             .          
+purple.orange          .            77.6699        +INF             .          
+purple.purple          .            77.6699        +INF             .          
+
+---- EQU restrict_mb  machine-color restriction (switchable)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow        -INF          815.5340      4000.0000          .          
+X1.blue          -INF             .          4000.0000          .          
+X1.green         -INF         1631.0680      4000.0000          .          
+X1.orange        -INF         1553.3981      4000.0000          .          
+X1.purple        -INF             .          4000.0000          .          
+X2.yellow        -INF          815.5340      4000.0000          .          
+X2.blue          -INF         1631.0680      4000.0000          .          
+X2.green         -INF             .          4000.0000          .          
+X2.orange        -INF             .          4000.0000          .          
+X2.purple        -INF         1553.3981      4000.0000          .          
+
+---- VAR Q  production on machine m of color b (beans/week)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow          .           815.5340        +INF             .          
+X1.blue            .              .            +INF            EPS         
+X1.green           .          1631.0680        +INF             .          
+X1.orange          .          1553.3981        +INF             .          
+X1.purple          .              .            +INF            EPS         
+X2.yellow          .           815.5340        +INF             .          
+X2.blue            .          1631.0680        +INF             .          
+X2.green           .              .            +INF            EPS         
+X2.orange          .              .            +INF            EPS         
+X2.purple          .          1553.3981        +INF             .          
+
+---- VAR Qcolor  total production of color b across machines (beans/week)
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .          1631.0680        +INF             .          
+blue            .          1631.0680        +INF             .          
+green           .          1631.0680        +INF             .          
+orange          .          1553.3981        +INF             .          
+purple          .          1553.3981        +INF             .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR z                 -INF         7962.7184        +INF             .          
+
+  z  profit ($/week)
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 12
+HW1 - Q2 Junes Jellybeans
+Equation Listing    SOLVE Jelly Using LP From line 105
+
+
+---- obj  =E=  maximize total net revenue
+
+obj..  - Q(X1,yellow) - 1.05*Q(X1,blue) - 1.07*Q(X1,green) - 0.95*Q(X1,orange) - 0.9*Q(X1,purple) - Q(X2,yellow) - 1.05*Q(X2,blue) - 1.07*Q(X2,green) - 0.95*Q(X2,orange) - 0.9*Q(X2,purple) + z =E= 0 ; (LHS = -9.09494701772928E-13, INFES = 9.09494701772928E-13 ****)
+     
+
+---- def_color  =E=  define totals by color
+
+def_color(yellow)..  - Q(X1,yellow) - Q(X2,yellow) + Qcolor(yellow) =E= 0 ; (LHS = 6.82121026329696E-13, INFES = 6.82121026329696E-13 ****)
+     
+def_color(blue)..  - Q(X1,blue) - Q(X2,blue) + Qcolor(blue) =E= 0 ; (LHS = 0)
+     
+def_color(green)..  - Q(X1,green) - Q(X2,green) + Qcolor(green) =E= 0 ; (LHS = 0)
+     
+REMAINING 2 ENTRIES SKIPPED
+
+
+---- cap_machine  =L=  machine weekly capacity
+
+cap_machine(X1)..  Q(X1,yellow) + Q(X1,blue) + Q(X1,green) + Q(X1,orange) + Q(X1,purple) =L= 4000 ; (LHS = 4000)
+     
+cap_machine(X2)..  Q(X2,yellow) + Q(X2,blue) + Q(X2,green) + Q(X2,orange) + Q(X2,purple) =L= 4000 ; (LHS = 4000)
+     
+
+---- eq_prodlimit_upper  =L=  near-equal upper bound (switchable)
+
+eq_prodlimit_upper(yellow,yellow)..  - 0.05*Qcolor(yellow) =L= 1000000 ; (LHS = -81.5533980581677)
+     
+eq_prodlimit_upper(yellow,blue)..  Qcolor(yellow) - 1.05*Qcolor(blue) =L= 1000000 ; (LHS = -81.5533980581677)
+     
+eq_prodlimit_upper(yellow,green)..  Qcolor(yellow) - 1.05*Qcolor(green) =L= 1000000 ; (LHS = -81.5533980581677)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- eq_prodlimit_lower  =G=  near-equal lower bound (switchable)
+
+eq_prodlimit_lower(yellow,yellow)..  0.05*Qcolor(yellow) =G= -1000000 ; (LHS = 81.5533980582841)
+     
+eq_prodlimit_lower(yellow,blue)..  Qcolor(yellow) - 0.95*Qcolor(blue) =G= -1000000 ; (LHS = 81.5533980582841)
+     
+eq_prodlimit_lower(yellow,green)..  Qcolor(yellow) - 0.95*Qcolor(green) =G= -1000000 ; (LHS = 81.5533980582841)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- restrict_mb  =L=  machine-color restriction (switchable)
+
+restrict_mb(X1,yellow)..  Q(X1,yellow) =L= 4000 ; (LHS = 815.533980582524)
+     
+restrict_mb(X1,blue)..  Q(X1,blue) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,green)..  Q(X1,green) =L= 4000 ; (LHS = 1631.06796116505)
+     
+REMAINING 7 ENTRIES SKIPPED
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 13
+HW1 - Q2 Junes Jellybeans
+Column Listing      SOLVE Jelly Using LP From line 105
+
+
+---- Q  production on machine m of color b (beans/week)
+
+Q(X1,yellow)
+                (.LO, .L, .UP, .M = 0, 815.533980582524, +INF, 0)
+       -1       obj
+       -1       def_color(yellow)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,yellow)
+
+Q(X1,blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, EPS)
+       -1.05    obj
+       -1       def_color(blue)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,blue)
+
+Q(X1,green)
+                (.LO, .L, .UP, .M = 0, 1631.06796116505, +INF, 0)
+       -1.07    obj
+       -1       def_color(green)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,green)
+
+REMAINING 7 ENTRIES SKIPPED
+
+---- Qcolor  total production of color b across machines (beans/week)
+
+Qcolor(yellow)
+                (.LO, .L, .UP, .M = 0, 1631.06796116505, +INF, 0)
+        1       def_color(yellow)
+       -0.05    eq_prodlimit_upper(yellow,yellow)
+        1       eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(yellow,green)
+        1       eq_prodlimit_upper(yellow,orange)
+        1       eq_prodlimit_upper(yellow,purple)
+       -1.05    eq_prodlimit_upper(blue,yellow)
+       -1.05    eq_prodlimit_upper(green,yellow)
+       -1.05    eq_prodlimit_upper(orange,yellow)
+       -1.05    eq_prodlimit_upper(purple,yellow)
+        0.05    eq_prodlimit_lower(yellow,yellow)
+        1       eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(yellow,green)
+        1       eq_prodlimit_lower(yellow,orange)
+        1       eq_prodlimit_lower(yellow,purple)
+       -0.95    eq_prodlimit_lower(blue,yellow)
+       -0.95    eq_prodlimit_lower(green,yellow)
+       -0.95    eq_prodlimit_lower(orange,yellow)
+       -0.95    eq_prodlimit_lower(purple,yellow)
+
+Qcolor(blue)
+                (.LO, .L, .UP, .M = 0, 1631.06796116505, +INF, 0)
+        1       def_color(blue)
+       -1.05    eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(blue,yellow)
+       -0.05    eq_prodlimit_upper(blue,blue)
+        1       eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(blue,orange)
+        1       eq_prodlimit_upper(blue,purple)
+       -1.05    eq_prodlimit_upper(green,blue)
+       -1.05    eq_prodlimit_upper(orange,blue)
+       -1.05    eq_prodlimit_upper(purple,blue)
+       -0.95    eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(blue,yellow)
+        0.05    eq_prodlimit_lower(blue,blue)
+        1       eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(blue,orange)
+        1       eq_prodlimit_lower(blue,purple)
+       -0.95    eq_prodlimit_lower(green,blue)
+       -0.95    eq_prodlimit_lower(orange,blue)
+       -0.95    eq_prodlimit_lower(purple,blue)
+
+Qcolor(green)
+                (.LO, .L, .UP, .M = 0, 1631.06796116505, +INF, 0)
+        1       def_color(green)
+       -1.05    eq_prodlimit_upper(yellow,green)
+       -1.05    eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(green,yellow)
+        1       eq_prodlimit_upper(green,blue)
+       -0.05    eq_prodlimit_upper(green,green)
+        1       eq_prodlimit_upper(green,orange)
+        1       eq_prodlimit_upper(green,purple)
+       -1.05    eq_prodlimit_upper(orange,green)
+       -1.05    eq_prodlimit_upper(purple,green)
+       -0.95    eq_prodlimit_lower(yellow,green)
+       -0.95    eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(green,yellow)
+        1       eq_prodlimit_lower(green,blue)
+        0.05    eq_prodlimit_lower(green,green)
+        1       eq_prodlimit_lower(green,orange)
+        1       eq_prodlimit_lower(green,purple)
+       -0.95    eq_prodlimit_lower(orange,green)
+       -0.95    eq_prodlimit_lower(purple,green)
+
+REMAINING 2 ENTRIES SKIPPED
+
+---- z  profit ($/week)
+
+z
+                (.LO, .L, .UP, .M = -INF, 7962.71844660194, +INF, 0)
+        1       obj
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 14
+HW1 - Q2 Junes Jellybeans
+Range Statistics    SOLVE Jelly Using LP From line 105
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 4.000E+03, 1.000E+06] - Zero values observed as well
+Bound     [min, max] : [        NA,        NA] - Zero values observed as well
+Matrix    [min, max] : [ 5.000E-02, 1.070E+00]
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 15
+HW1 - Q2 Junes Jellybeans
+Model Statistics    SOLVE Jelly Using LP From line 105
+
+
+LOOPS                                    s   d_restrict
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           6     SINGLE EQUATIONS           68
+BLOCKS OF VARIABLES           3     SINGLE VARIABLES           16
+NON ZERO ELEMENTS           136
+
+
+GENERATION TIME      =        0.031 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+               L O O P S                  s d_restrict
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 16
+HW1 - Q2 Junes Jellybeans
+Solution Report     SOLVE Jelly Using LP From line 105
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   Jelly               OBJECTIVE  z
+     TYPE    LP                  DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  105
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE             8280.0000
+
+ RESOURCE USAGE, LIMIT          0.016 10000000000.000
+ ITERATION COUNT, LIMIT         0    2147483647
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO setup time: 0.00s
+--- GMO memory 0.51 Mb (peak 0.51 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.00 Mb (peak 0.01 Mb)
+--- Starting Cplex
+
+
+--- LP status (1): optimal.
+--- Cplex Time: 0.02sec (det. 0.05 ticks)
+
+
+Optimal solution found
+Objective:         8280.000000
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU obj                 .              .              .             1.0000      
+
+  obj  maximize total net revenue
+
+---- EQU def_color  define totals by color
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .              .              .             EPS         
+blue            .              .              .             EPS         
+green           .              .              .             EPS         
+orange          .              .              .             EPS         
+purple          .              .              .             EPS         
+
+---- EQU cap_machine  machine weekly capacity
+
+          LOWER          LEVEL          UPPER         MARGINAL
+
+X1        -INF         4000.0000      4000.0000         1.0700      
+X2        -INF         4000.0000      4000.0000         1.0000      
+
+---- EQU eq_prodlimit_upper  near-equal upper bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow        -INF         -200.0000   1000000.0000          .          
+yellow.blue          -INF         4000.0000   1000000.0000          .          
+yellow.green         -INF         -200.0000   1000000.0000          .          
+yellow.orange        -INF         4000.0000   1000000.0000          .          
+yellow.purple        -INF         4000.0000   1000000.0000          .          
+blue  .yellow        -INF        -4200.0000   1000000.0000          .          
+blue  .blue          -INF             .       1000000.0000          .          
+blue  .green         -INF        -4200.0000   1000000.0000          .          
+blue  .orange        -INF             .       1000000.0000          .          
+blue  .purple        -INF             .       1000000.0000          .          
+green .yellow        -INF         -200.0000   1000000.0000          .          
+green .blue          -INF         4000.0000   1000000.0000          .          
+green .green         -INF         -200.0000   1000000.0000          .          
+green .orange        -INF         4000.0000   1000000.0000          .          
+green .purple        -INF         4000.0000   1000000.0000          .          
+orange.yellow        -INF        -4200.0000   1000000.0000          .          
+orange.blue          -INF             .       1000000.0000          .          
+orange.green         -INF        -4200.0000   1000000.0000          .          
+orange.orange        -INF             .       1000000.0000          .          
+orange.purple        -INF             .       1000000.0000          .          
+purple.yellow        -INF        -4200.0000   1000000.0000          .          
+purple.blue          -INF             .       1000000.0000          .          
+purple.green         -INF        -4200.0000   1000000.0000          .          
+purple.orange        -INF             .       1000000.0000          .          
+purple.purple        -INF             .       1000000.0000          .          
+
+---- EQU eq_prodlimit_lower  near-equal lower bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow   -1.000000E+6       200.0000        +INF             .          
+yellow.blue     -1.000000E+6      4000.0000        +INF             .          
+yellow.green    -1.000000E+6       200.0000        +INF             .          
+yellow.orange   -1.000000E+6      4000.0000        +INF             .          
+yellow.purple   -1.000000E+6      4000.0000        +INF             .          
+blue  .yellow   -1.000000E+6     -3800.0000        +INF             .          
+blue  .blue     -1.000000E+6          .            +INF             .          
+blue  .green    -1.000000E+6     -3800.0000        +INF             .          
+blue  .orange   -1.000000E+6          .            +INF             .          
+blue  .purple   -1.000000E+6          .            +INF             .          
+green .yellow   -1.000000E+6       200.0000        +INF             .          
+green .blue     -1.000000E+6      4000.0000        +INF             .          
+green .green    -1.000000E+6       200.0000        +INF             .          
+green .orange   -1.000000E+6      4000.0000        +INF             .          
+green .purple   -1.000000E+6      4000.0000        +INF             .          
+orange.yellow   -1.000000E+6     -3800.0000        +INF             .          
+orange.blue     -1.000000E+6          .            +INF             .          
+orange.green    -1.000000E+6     -3800.0000        +INF             .          
+orange.orange   -1.000000E+6          .            +INF             .          
+orange.purple   -1.000000E+6          .            +INF             .          
+purple.yellow   -1.000000E+6     -3800.0000        +INF             .          
+purple.blue     -1.000000E+6          .            +INF             .          
+purple.green    -1.000000E+6     -3800.0000        +INF             .          
+purple.orange   -1.000000E+6          .            +INF             .          
+purple.purple   -1.000000E+6          .            +INF             .          
+
+---- EQU restrict_mb  machine-color restriction (switchable)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow        -INF             .          4000.0000          .          
+X1.blue          -INF             .          4000.0000          .          
+X1.green         -INF         4000.0000      4000.0000          .          
+X1.orange        -INF             .              .              .          
+X1.purple        -INF             .              .              .          
+X2.yellow        -INF         4000.0000      4000.0000          .          
+X2.blue          -INF             .              .             0.0500      
+X2.green         -INF             .              .             0.0700      
+X2.orange        -INF             .          4000.0000          .          
+X2.purple        -INF             .          4000.0000          .          
+
+---- VAR Q  production on machine m of color b (beans/week)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow          .              .            +INF           -0.0700      
+X1.blue            .              .            +INF           -0.0200      
+X1.green           .          4000.0000        +INF             .          
+X1.orange          .              .            +INF           -0.1200      
+X1.purple          .              .            +INF           -0.1700      
+X2.yellow          .          4000.0000        +INF             .          
+X2.blue            .              .            +INF             .          
+X2.green           .              .            +INF             .          
+X2.orange          .              .            +INF           -0.0500      
+X2.purple          .              .            +INF           -0.1000      
+
+---- VAR Qcolor  total production of color b across machines (beans/week)
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .          4000.0000        +INF             .          
+blue            .              .            +INF             .          
+green           .          4000.0000        +INF             .          
+orange          .              .            +INF             .          
+purple          .              .            +INF             .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR z                 -INF         8280.0000        +INF             .          
+
+  z  profit ($/week)
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 17
+HW1 - Q2 Junes Jellybeans
+Equation Listing    SOLVE Jelly Using LP From line 105
+
+
+---- obj  =E=  maximize total net revenue
+
+obj..  - Q(X1,yellow) - 1.05*Q(X1,blue) - 1.07*Q(X1,green) - 0.95*Q(X1,orange) - 0.9*Q(X1,purple) - Q(X2,yellow) - 1.05*Q(X2,blue) - 1.07*Q(X2,green) - 0.95*Q(X2,orange) - 0.9*Q(X2,purple) + z =E= 0 ; (LHS = 0)
+     
+
+---- def_color  =E=  define totals by color
+
+def_color(yellow)..  - Q(X1,yellow) - Q(X2,yellow) + Qcolor(yellow) =E= 0 ; (LHS = 0)
+     
+def_color(blue)..  - Q(X1,blue) - Q(X2,blue) + Qcolor(blue) =E= 0 ; (LHS = 0)
+     
+def_color(green)..  - Q(X1,green) - Q(X2,green) + Qcolor(green) =E= 0 ; (LHS = 0)
+     
+REMAINING 2 ENTRIES SKIPPED
+
+
+---- cap_machine  =L=  machine weekly capacity
+
+cap_machine(X1)..  Q(X1,yellow) + Q(X1,blue) + Q(X1,green) + Q(X1,orange) + Q(X1,purple) =L= 4000 ; (LHS = 4000)
+     
+cap_machine(X2)..  Q(X2,yellow) + Q(X2,blue) + Q(X2,green) + Q(X2,orange) + Q(X2,purple) =L= 4000 ; (LHS = 4000)
+     
+
+---- eq_prodlimit_upper  =L=  near-equal upper bound (switchable)
+
+eq_prodlimit_upper(yellow,yellow)..  - 0.05*Qcolor(yellow) =L= 0 ; (LHS = -200)
+     
+eq_prodlimit_upper(yellow,blue)..  Qcolor(yellow) - 1.05*Qcolor(blue) =L= 0 ; (LHS = 4000, INFES = 4000 ****)
+     
+eq_prodlimit_upper(yellow,green)..  Qcolor(yellow) - 1.05*Qcolor(green) =L= 0 ; (LHS = -200)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- eq_prodlimit_lower  =G=  near-equal lower bound (switchable)
+
+eq_prodlimit_lower(yellow,yellow)..  0.05*Qcolor(yellow) =G= 0 ; (LHS = 200)
+     
+eq_prodlimit_lower(yellow,blue)..  Qcolor(yellow) - 0.95*Qcolor(blue) =G= 0 ; (LHS = 4000)
+     
+eq_prodlimit_lower(yellow,green)..  Qcolor(yellow) - 0.95*Qcolor(green) =G= 0 ; (LHS = 200)
+     
+REMAINING 22 ENTRIES SKIPPED
+
+
+---- restrict_mb  =L=  machine-color restriction (switchable)
+
+restrict_mb(X1,yellow)..  Q(X1,yellow) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,blue)..  Q(X1,blue) =L= 4000 ; (LHS = 0)
+     
+restrict_mb(X1,green)..  Q(X1,green) =L= 4000 ; (LHS = 4000)
+     
+REMAINING 7 ENTRIES SKIPPED
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 18
+HW1 - Q2 Junes Jellybeans
+Column Listing      SOLVE Jelly Using LP From line 105
+
+
+---- Q  production on machine m of color b (beans/week)
+
+Q(X1,yellow)
+                (.LO, .L, .UP, .M = 0, 0, +INF, -0.0700000000000001)
+       -1       obj
+       -1       def_color(yellow)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,yellow)
+
+Q(X1,blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, -0.02)
+       -1.05    obj
+       -1       def_color(blue)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,blue)
+
+Q(X1,green)
+                (.LO, .L, .UP, .M = 0, 4000, +INF, 0)
+       -1.07    obj
+       -1       def_color(green)
+        1       cap_machine(X1)
+        1       restrict_mb(X1,green)
+
+REMAINING 7 ENTRIES SKIPPED
+
+---- Qcolor  total production of color b across machines (beans/week)
+
+Qcolor(yellow)
+                (.LO, .L, .UP, .M = 0, 4000, +INF, 0)
+        1       def_color(yellow)
+       -0.05    eq_prodlimit_upper(yellow,yellow)
+        1       eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(yellow,green)
+        1       eq_prodlimit_upper(yellow,orange)
+        1       eq_prodlimit_upper(yellow,purple)
+       -1.05    eq_prodlimit_upper(blue,yellow)
+       -1.05    eq_prodlimit_upper(green,yellow)
+       -1.05    eq_prodlimit_upper(orange,yellow)
+       -1.05    eq_prodlimit_upper(purple,yellow)
+        0.05    eq_prodlimit_lower(yellow,yellow)
+        1       eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(yellow,green)
+        1       eq_prodlimit_lower(yellow,orange)
+        1       eq_prodlimit_lower(yellow,purple)
+       -0.95    eq_prodlimit_lower(blue,yellow)
+       -0.95    eq_prodlimit_lower(green,yellow)
+       -0.95    eq_prodlimit_lower(orange,yellow)
+       -0.95    eq_prodlimit_lower(purple,yellow)
+
+Qcolor(blue)
+                (.LO, .L, .UP, .M = 0, 0, +INF, 0)
+        1       def_color(blue)
+       -1.05    eq_prodlimit_upper(yellow,blue)
+        1       eq_prodlimit_upper(blue,yellow)
+       -0.05    eq_prodlimit_upper(blue,blue)
+        1       eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(blue,orange)
+        1       eq_prodlimit_upper(blue,purple)
+       -1.05    eq_prodlimit_upper(green,blue)
+       -1.05    eq_prodlimit_upper(orange,blue)
+       -1.05    eq_prodlimit_upper(purple,blue)
+       -0.95    eq_prodlimit_lower(yellow,blue)
+        1       eq_prodlimit_lower(blue,yellow)
+        0.05    eq_prodlimit_lower(blue,blue)
+        1       eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(blue,orange)
+        1       eq_prodlimit_lower(blue,purple)
+       -0.95    eq_prodlimit_lower(green,blue)
+       -0.95    eq_prodlimit_lower(orange,blue)
+       -0.95    eq_prodlimit_lower(purple,blue)
+
+Qcolor(green)
+                (.LO, .L, .UP, .M = 0, 4000, +INF, 0)
+        1       def_color(green)
+       -1.05    eq_prodlimit_upper(yellow,green)
+       -1.05    eq_prodlimit_upper(blue,green)
+        1       eq_prodlimit_upper(green,yellow)
+        1       eq_prodlimit_upper(green,blue)
+       -0.05    eq_prodlimit_upper(green,green)
+        1       eq_prodlimit_upper(green,orange)
+        1       eq_prodlimit_upper(green,purple)
+       -1.05    eq_prodlimit_upper(orange,green)
+       -1.05    eq_prodlimit_upper(purple,green)
+       -0.95    eq_prodlimit_lower(yellow,green)
+       -0.95    eq_prodlimit_lower(blue,green)
+        1       eq_prodlimit_lower(green,yellow)
+        1       eq_prodlimit_lower(green,blue)
+        0.05    eq_prodlimit_lower(green,green)
+        1       eq_prodlimit_lower(green,orange)
+        1       eq_prodlimit_lower(green,purple)
+       -0.95    eq_prodlimit_lower(orange,green)
+       -0.95    eq_prodlimit_lower(purple,green)
+
+REMAINING 2 ENTRIES SKIPPED
+
+---- z  profit ($/week)
+
+z
+                (.LO, .L, .UP, .M = -INF, 8280, +INF, 0)
+        1       obj
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 19
+HW1 - Q2 Junes Jellybeans
+Range Statistics    SOLVE Jelly Using LP From line 105
+
+
+RANGE STATISTICS (ABSOLUTE NON-ZERO FINITE VALUES)
+
+RHS       [min, max] : [ 4.000E+03, 4.000E+03] - Zero values observed as well
+Bound     [min, max] : [        NA,        NA] - Zero values observed as well
+Matrix    [min, max] : [ 5.000E-02, 1.070E+00]
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 20
+HW1 - Q2 Junes Jellybeans
+Model Statistics    SOLVE Jelly Using LP From line 105
+
+
+LOOPS                                    s   cd_both
+
+
+MODEL STATISTICS
+
+BLOCKS OF EQUATIONS           6     SINGLE EQUATIONS           68
+BLOCKS OF VARIABLES           3     SINGLE VARIABLES           16
+NON ZERO ELEMENTS           136
+
+
+GENERATION TIME      =        0.016 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
+               L O O P S                  s cd_both
+
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 21
+HW1 - Q2 Junes Jellybeans
+Solution Report     SOLVE Jelly Using LP From line 105
+
+
+               S O L V E      S U M M A R Y
+
+     MODEL   Jelly               OBJECTIVE  z
+     TYPE    LP                  DIRECTION  MAXIMIZE
+     SOLVER  CPLEX               FROM LINE  105
+
+**** SOLVER STATUS     1 Normal Completion
+**** MODEL STATUS      1 Optimal
+**** OBJECTIVE VALUE             7962.7184
+
+ RESOURCE USAGE, LIMIT          0.000 10000000000.000
+ ITERATION COUNT, LIMIT         7    2147483647
+--- GAMS/CPLEX licensed for continuous and discrete problems.
+--- GMO setup time: 0.00s
+--- GMO memory 0.51 Mb (peak 0.51 Mb)
+--- Dictionary memory 0.00 Mb
+--- Cplex 22.1.1.0 link memory 0.00 Mb (peak 0.01 Mb)
+--- Starting Cplex
+
+
+--- LP status (1): optimal.
+--- Cplex Time: 0.00sec (det. 0.10 ticks)
+
+
+Optimal solution found
+Objective:         7962.718447
+
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- EQU obj                 .              .              .             1.0000      
+
+  obj  maximize total net revenue
+
+---- EQU def_color  define totals by color
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .              .              .            -0.0047      
+blue            .              .              .            -0.0547      
+green           .              .              .            -0.0747      
+orange          .              .              .             0.0453      
+purple          .              .              .             0.0953      
+
+---- EQU cap_machine  machine weekly capacity
+
+          LOWER          LEVEL          UPPER         MARGINAL
+
+X1        -INF         4000.0000      4000.0000         0.9953      
+X2        -INF         4000.0000      4000.0000         0.9953      
+
+---- EQU eq_prodlimit_upper  near-equal upper bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow        -INF          -81.5534          .              .          
+yellow.blue          -INF          -81.5534          .              .          
+yellow.green         -INF          -81.5534          .              .          
+yellow.orange        -INF             .              .             0.0047      
+yellow.purple        -INF      -2.27374E-13          .              .          
+blue  .yellow        -INF          -81.5534          .              .          
+blue  .blue          -INF          -81.5534          .              .          
+blue  .green         -INF          -81.5534          .              .          
+blue  .orange        -INF      2.273737E-13          .              .          
+blue  .purple        -INF             .              .             0.0547      
+green .yellow        -INF          -81.5534          .              .          
+green .blue          -INF          -81.5534          .              .          
+green .green         -INF          -81.5534          .              .          
+green .orange        -INF             .              .             0.0385      
+green .purple        -INF             .              .             0.0361      
+orange.yellow        -INF         -159.2233          .              .          
+orange.blue          -INF         -159.2233          .              .          
+orange.green         -INF         -159.2233          .              .          
+orange.orange        -INF          -77.6699          .              .          
+orange.purple        -INF          -77.6699          .              .          
+purple.yellow        -INF         -159.2233          .              .          
+purple.blue          -INF         -159.2233          .              .          
+purple.green         -INF         -159.2233          .              .          
+purple.orange        -INF          -77.6699          .              .          
+purple.purple        -INF          -77.6699          .              .          
+
+---- EQU eq_prodlimit_lower  near-equal lower bound (switchable)
+
+                     LOWER          LEVEL          UPPER         MARGINAL
+
+yellow.yellow          .            81.5534        +INF             .          
+yellow.blue            .            81.5534        +INF             .          
+yellow.green           .            81.5534        +INF             .          
+yellow.orange          .           155.3398        +INF             .          
+yellow.purple          .           155.3398        +INF             .          
+blue  .yellow          .            81.5534        +INF             .          
+blue  .blue            .            81.5534        +INF             .          
+blue  .green           .            81.5534        +INF             .          
+blue  .orange          .           155.3398        +INF             .          
+blue  .purple          .           155.3398        +INF             .          
+green .yellow          .            81.5534        +INF             .          
+green .blue            .            81.5534        +INF             .          
+green .green           .            81.5534        +INF             .          
+green .orange          .           155.3398        +INF             .          
+green .purple          .           155.3398        +INF             .          
+orange.yellow          .             3.8835        +INF             .          
+orange.blue            .             3.8835        +INF             .          
+orange.green           .             3.8835        +INF             .          
+orange.orange          .            77.6699        +INF             .          
+orange.purple          .            77.6699        +INF             .          
+purple.yellow          .             3.8835        +INF             .          
+purple.blue            .             3.8835        +INF             .          
+purple.green           .             3.8835        +INF             .          
+purple.orange          .            77.6699        +INF             .          
+purple.purple          .            77.6699        +INF             .          
+
+---- EQU restrict_mb  machine-color restriction (switchable)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow        -INF          737.8641      4000.0000          .          
+X1.blue          -INF         1631.0680      4000.0000          .          
+X1.green         -INF         1631.0680      4000.0000          .          
+X1.orange        -INF             .              .              .          
+X1.purple        -INF             .              .              .          
+X2.yellow        -INF          893.2039      4000.0000          .          
+X2.blue          -INF             .              .              .          
+X2.green         -INF             .              .              .          
+X2.orange        -INF         1553.3981      4000.0000          .          
+X2.purple        -INF         1553.3981      4000.0000          .          
+
+---- VAR Q  production on machine m of color b (beans/week)
+
+                 LOWER          LEVEL          UPPER         MARGINAL
+
+X1.yellow          .           737.8641        +INF             .          
+X1.blue            .          1631.0680        +INF             .          
+X1.green           .          1631.0680        +INF             .          
+X1.orange          .              .            +INF            EPS         
+X1.purple          .              .            +INF            EPS         
+X2.yellow          .           893.2039        +INF             .          
+X2.blue            .              .            +INF            EPS         
+X2.green           .              .            +INF            EPS         
+X2.orange          .          1553.3981        +INF             .          
+X2.purple          .          1553.3981        +INF             .          
+
+---- VAR Qcolor  total production of color b across machines (beans/week)
+
+              LOWER          LEVEL          UPPER         MARGINAL
+
+yellow          .          1631.0680        +INF             .          
+blue            .          1631.0680        +INF             .          
+green           .          1631.0680        +INF             .          
+orange          .          1553.3981        +INF             .          
+purple          .          1553.3981        +INF             .          
+
+                           LOWER          LEVEL          UPPER         MARGINAL
+
+---- VAR z                 -INF         7962.7184        +INF             .          
+
+  z  profit ($/week)
+
+
+**** REPORT SUMMARY :        0     NONOPT
+                             0 INFEASIBLE
+                             0  UNBOUNDED
+GAMS 47.6.0  c2de9d6d Sep 12, 2024          WEX-WEI x86 64bit/MS Windows - 12/18/25 22:07:12 Page 22
+HW1 - Q2 Junes Jellybeans
+E x e c u t i o n
+
+
+----    112 PARAMETER cap                  =     4000.000  capacity per machine (beans/week)
+
+----    112 PARAMETER revenue  net revenue ($/bean)
+
+yellow 1.000,    blue   1.050,    green  1.070,    orange 0.950,    purple 0.900
+
+
+----    112 PARAMETER Q_sol  solution Q by scenario (beans/week)
+
+                   yellow        blue       green      orange      purple
+
+b_base    .X1                            4000.000
+b_base    .X2                            4000.000
+c_equal   .X1     815.534                1631.068    1553.398
+c_equal   .X2     815.534    1631.068                            1553.398
+d_restrict.X1                            4000.000
+d_restrict.X2    4000.000
+cd_both   .X1     737.864    1631.068    1631.068
+cd_both   .X2     893.204                            1553.398    1553.398
+
+
+----    112 PARAMETER Qcolor_sol  solution totals by color (beans/week)
+
+                yellow        blue       green      orange      purple
+
+b_base                                8000.000
+c_equal       1631.068    1631.068    1631.068    1553.398    1553.398
+d_restrict    4000.000                4000.000
+cd_both       1631.068    1631.068    1631.068    1553.398    1553.398
+
+
+----    112 PARAMETER z_sol  profit by scenario ($/week)
+
+b_base     8560.000,    c_equal    7962.718,    d_restrict 8280.000,    cd_both    7962.718
+
+
+
+EXECUTION TIME       =        0.640 SECONDS      4 MB  47.6.0 c2de9d6d WEX-WEI
 
 
 USER: Computational Economics EBGN 645               G250827|0002AO-GEN
@@ -183,5 +1615,3 @@ USER: Computational Economics EBGN 645               G250827|0002AO-GEN
 
 Input      C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.gms
 Output     C:\Users\tyler\OneDrive\Documents\College\Mines\Coding Project Files\Linnebur_EGBN645\HW1\Q2.lst
-
-**** USER ERROR(S) ENCOUNTERED
